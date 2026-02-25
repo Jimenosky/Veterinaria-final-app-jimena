@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,8 @@ export default function CitasView() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedCita, setSelectedCita] = useState<Cita | null>(null);
 
   const fetchCitas = async () => {
     try {
@@ -74,46 +76,48 @@ export default function CitasView() {
       case 'completada':
         return 'checkmark-done-circle';
       default:
-return 'help-circle';
+        return 'help-circle';
     }
   };
 
   const renderCita = ({ item }: { item: Cita }) => (
-    <View style={styles.citaCard}>
-      <View style={styles.citaHeader}>
-        <View style={styles.citaHeaderLeft}>
-          <Ionicons name="paw" size={24} color="#7c3aed" />
-          <View style={styles.citaHeaderText}>
-            <Text style={styles.citaMascota}>{item.mascota_nombre}</Text>
-            <Text style={styles.citaTipo}>{item.tipo_servicio}</Text>
+    <TouchableOpacity onPress={() => { setSelectedCita(item); setModalVisible(true); }}>
+      <View style={styles.citaCard}>
+        <View style={styles.citaHeader}>
+          <View style={styles.citaHeaderLeft}>
+            <Ionicons name="paw" size={24} color="#7c3aed" />
+            <View style={styles.citaHeaderText}>
+              <Text style={styles.citaMascota}>{item.mascota_nombre}</Text>
+              <Text style={styles.citaTipo}>{item.tipo_servicio}</Text>
+            </View>
+          </View>
+          <LinearGradient
+            colors={getEstadoColor(item.estado)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.estadoBadge}
+          >
+            <Ionicons name={getEstadoIcon(item.estado) as any} size={14} color="#fff" />
+            <Text style={styles.estadoText}>{item.estado}</Text>
+          </LinearGradient>
+        </View>
+
+        {item.descripcion && (
+          <Text style={styles.citaDescripcion}>{item.descripcion}</Text>
+        )}
+
+        <View style={styles.citaFooter}>
+          <View style={styles.citaInfo}>
+            <Ionicons name="calendar" size={16} color="#a1a1aa" />
+            <Text style={styles.citaInfoText}>{new Date(item.fecha).toLocaleDateString('es-ES')}</Text>
+          </View>
+          <View style={styles.citaInfo}>
+            <Ionicons name="time" size={16} color="#a1a1aa" />
+            <Text style={styles.citaInfoText}>{item.hora}</Text>
           </View>
         </View>
-        <LinearGradient
-          colors={getEstadoColor(item.estado)}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.estadoBadge}
-        >
-          <Ionicons name={getEstadoIcon(item.estado) as any} size={14} color="#fff" />
-          <Text style={styles.estadoText}>{item.estado}</Text>
-        </LinearGradient>
       </View>
-
-      {item.descripcion && (
-        <Text style={styles.citaDescripcion}>{item.descripcion}</Text>
-      )}
-
-      <View style={styles.citaFooter}>
-        <View style={styles.citaInfo}>
-          <Ionicons name="calendar" size={16} color="#a1a1aa" />
-          <Text style={styles.citaInfoText}>{new Date(item.fecha).toLocaleDateString('es-ES')}</Text>
-        </View>
-        <View style={styles.citaInfo}>
-          <Ionicons name="time" size={16} color="#a1a1aa" />
-          <Text style={styles.citaInfoText}>{item.hora}</Text>
-        </View>
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -145,19 +149,39 @@ return 'help-circle';
   }
 
   return (
-    <FlatList
-      data={citas}
-      renderItem={renderCita}
-      keyExtractor={(item) => item.id.toString()}
-      contentContainerStyle={styles.listContainer}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#7c3aed"
-        />
-      }
-    />
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={citas}
+        renderItem={renderCita}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#7c3aed"
+          />
+        }
+      />
+      {selectedCita && (
+        <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: '90%', backgroundColor: '#18181b', borderRadius: 20, padding: 20 }}>
+              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 12 }}>Detalle de la cita</Text>
+              <Text style={{ color: '#fff', fontSize: 16 }}>Mascota: {selectedCita.mascota_nombre}</Text>
+              <Text style={{ color: '#fff', fontSize: 16 }}>Servicio: {selectedCita.tipo_servicio}</Text>
+              <Text style={{ color: '#fff', fontSize: 16 }}>Fecha: {new Date(selectedCita.fecha).toLocaleDateString('es-ES')}</Text>
+              <Text style={{ color: '#fff', fontSize: 16 }}>Hora: {selectedCita.hora}</Text>
+              <Text style={{ color: '#fff', fontSize: 16 }}>Estado: {selectedCita.estado}</Text>
+              {selectedCita.descripcion && <Text style={{ color: '#d4d4d8', fontSize: 15, marginTop: 8 }}>Descripción: {selectedCita.descripcion}</Text>}
+              <TouchableOpacity style={{ marginTop: 24, backgroundColor: '#3f3f46', borderRadius: 12, padding: 16, alignItems: 'center' }} onPress={() => setModalVisible(false)}>
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </View>
   );
 }
 

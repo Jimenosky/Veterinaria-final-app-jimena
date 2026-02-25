@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, To
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import HistorialMascotaModal from '../components/HistorialMascotaModal';
+import TratamientosMascotaModal from '../components/TratamientosMascotaModal';
 
 interface Mascota {
   id: number;
@@ -23,6 +25,8 @@ export default function MascotasView() {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingMascota, setEditingMascota] = useState<Mascota | null>(null);
+  const [selectedMascota, setSelectedMascota] = useState<Mascota | null>(null);
+  const [selectedTratamientosMascota, setSelectedTratamientosMascota] = useState<Mascota | null>(null);
   
   // Form fields
   const [nombre, setNombre] = useState('');
@@ -181,7 +185,8 @@ export default function MascotasView() {
     <TouchableOpacity 
       style={styles.mascotaCardWrapper}
       activeOpacity={0.7}
-      onPress={() => openModal(item)}
+      onPress={() => setSelectedMascota(item)}
+      onLongPress={() => setSelectedTratamientosMascota(item)}
     >
       <LinearGradient
         colors={getTipoColor(item.tipo)}
@@ -410,7 +415,22 @@ export default function MascotasView() {
           <Text style={styles.floatingButtonText}>Nueva Mascota</Text>
         </LinearGradient>
       </TouchableOpacity>
-
+      {selectedMascota && (
+        <HistorialMascotaModal
+          mascotaId={selectedMascota.id}
+          visible={true}
+          onClose={() => setSelectedMascota(null)}
+          nombreMascota={selectedMascota.nombre}
+        />
+      )}
+      {selectedTratamientosMascota && (
+        <TratamientosMascotaModal
+          mascotaId={selectedTratamientosMascota.id}
+          visible={true}
+          onClose={() => setSelectedTratamientosMascota(null)}
+          nombreMascota={selectedTratamientosMascota.nombre}
+        />
+      )}
       <Modal
         visible={modalVisible}
         animationType="slide"

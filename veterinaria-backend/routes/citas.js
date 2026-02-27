@@ -8,7 +8,18 @@ const router = express.Router();
 router.get('/user', authenticateToken, async (req, res) => {
   try {
     const citas = await allQuery(
-      `SELECT c.*, m.nombre AS mascota_nombre, m.tipo AS mascota_tipo, u.nombre AS veterinario_nombre
+      `SELECT 
+        c.id,
+        c.mascota_id,
+        c.usuario_id,
+        TO_CHAR(c.fecha_hora, 'YYYY-MM-DD') AS fecha,
+        TO_CHAR(c.fecha_hora, 'HH24:MI') AS hora,
+        c.motivo AS tipo_servicio,
+        c.notas AS descripcion,
+        c.estado,
+        m.nombre AS mascota_nombre,
+        m.tipo AS mascota_tipo,
+        u.nombre AS veterinario_nombre
        FROM citas c
        JOIN mascotas m ON c.mascota_id = m.id
        JOIN usuarios u ON c.usuario_id = u.id
@@ -28,7 +39,20 @@ router.get('/user', authenticateToken, async (req, res) => {
 router.get('/admin/all', authenticateAdmin, async (req, res) => {
   try {
     const citas = await allQuery(
-      `SELECT c.*, m.nombre AS mascota_nombre, m.tipo AS mascota_tipo, u.nombre AS usuario_nombre, u.email AS usuario_email, u.telefono
+      `SELECT 
+        c.id,
+        c.mascota_id,
+        c.usuario_id,
+        TO_CHAR(c.fecha_hora, 'YYYY-MM-DD') AS fecha,
+        TO_CHAR(c.fecha_hora, 'HH24:MI') AS hora,
+        c.motivo AS tipo_servicio,
+        c.notas AS descripcion,
+        c.estado,
+        m.nombre AS mascota_nombre,
+        m.tipo AS mascota_tipo,
+        u.nombre AS usuario_nombre,
+        u.email AS usuario_email,
+        u.telefono
        FROM citas c
        JOIN mascotas m ON c.mascota_id = m.id
        JOIN usuarios u ON c.usuario_id = u.id
@@ -89,7 +113,17 @@ router.post('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const cita = await getQuery(
-      `SELECT c.*, m.nombre AS mascota_nombre, m.tipo AS mascota_tipo
+      `SELECT 
+        c.id,
+        c.mascota_id,
+        c.usuario_id,
+        TO_CHAR(c.fecha_hora, 'YYYY-MM-DD') AS fecha,
+        TO_CHAR(c.fecha_hora, 'HH24:MI') AS hora,
+        c.motivo AS tipo_servicio,
+        c.notas AS descripcion,
+        c.estado,
+        m.nombre AS mascota_nombre,
+        m.tipo AS mascota_tipo
        FROM citas c
        JOIN mascotas m ON c.mascota_id = m.id
        WHERE c.id = $1`,

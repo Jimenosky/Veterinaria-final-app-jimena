@@ -24,7 +24,8 @@ export default function CitasView() {
 
   const fetchCitas = async () => {
     try {
-      const response = await fetch('https://api-express-mysql-de-jime.onrender.com/api/v1/citas/user', {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/v1/citas/user`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

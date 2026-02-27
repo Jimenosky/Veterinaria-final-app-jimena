@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, To
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import HistorialMascotaModal from '../components/HistorialMascotaModal';
-import TratamientosMascotaModal from '../components/TratamientosMascotaModal';
+import HistorialMascotaModal from '@/components/HistorialMascotaModal';
+import TratamientosMascotaModal from '@/components/TratamientosMascotaModal';
 
 interface Mascota {
   id: number;

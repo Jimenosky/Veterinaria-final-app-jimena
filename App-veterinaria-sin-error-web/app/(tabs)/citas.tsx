@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +14,12 @@ interface Cita {
   estado: string;
 }
 
+interface Mascota {
+  id: number;
+  nombre: string;
+  tipo: string;
+}
+
 export default function CitasView() {
   const { token } = useAuth();
   const [citas, setCitas] = useState<Cita[]>([]);
@@ -21,6 +27,14 @@ export default function CitasView() {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [mascotas, setMascotas] = useState<Mascota[]>([]);
+  const [selectedMascotaId, setSelectedMascotaId] = useState<number | null>(null);
+  const [fecha, setFecha] = useState('');
+  const [hora, setHora] = useState('');
+  const [motivo, setMotivo] = useState('');
+  const [notas, setNotas] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const fetchCitas = async () => {
     try {
@@ -40,6 +54,77 @@ export default function CitasView() {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const fetchMascotas = async () => {
+    try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/v1/mascotas`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMascotas(data.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar mascotas:', error);
+    }
+  };
+
+  const crearCita = async () => {
+    if (!selectedMascotaId || !fecha || !hora || !motivo) {
+      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+      const fechaHora = `${fecha} ${hora}:00`;
+      
+      const response = await fetch(`${apiUrl}/api/v1/citas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mascota_id: selectedMascotaId,
+          fecha_hora: fechaHora,
+          motivo,
+          notas,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert('Éxito', 'Cita creada exitosamente');
+        setCreateModalVisible(false);
+        resetForm();
+        fetchCitas();
+      } else {
+        Alert.alert('Error', data.message || 'No se pudo crear la cita');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Error al crear la cita');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedMascotaId(null);
+    setFecha('');
+    setHora('');
+    setMotivo('');
+    setNotas('');
+  };
+
+  const openCreateModal = () => {
+    fetchMascotas();
+    setCreateModalVisible(true);
   };
 
   useEffect(() => {
@@ -164,6 +249,108 @@ export default function CitasView() {
           />
         }
       />
+
+      {/* Botón flotante para crear cita */}
+      <TouchableOpacity style={styles.fab} onPress={openCreateModal}>
+        <LinearGradient
+          colors={['#7c3aed', '#a78bfa']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabGradient}
+        >
+          <Ionicons name="add" size={32} color="#fff" />
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* Modal crear cita */}
+      <Modal visible={createModalVisible} animationType="slide" transparent={true} onRequestClose={() => setCreateModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Nueva Cita</Text>
+              <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              <Text style={styles.label}>Mascota *</Text>
+              <View style={styles.pickerContainer}>
+                {mascotas.map((mascota) => (
+                  <TouchableOpacity
+                    key={mascota.id}
+                    style={[styles.mascotaOption, selectedMascotaId === mascota.id && styles.mascotaOptionSelected]}
+                    onPress={() => setSelectedMascotaId(mascota.id)}
+                  >
+                    <Ionicons name="paw" size={20} color={selectedMascotaId === mascota.id ? '#fff' : '#7c3aed'} />
+                    <Text style={[styles.mascotaOptionText, selectedMascotaId === mascota.id && styles.mascotaOptionTextSelected]}>
+                      {mascota.nombre} ({mascota.tipo})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Fecha (YYYY-MM-DD) *</Text>
+              <TextInput
+                style={styles.input}
+                value={fecha}
+                onChangeText={setFecha}
+                placeholder="2024-12-25"
+                placeholderTextColor="#71717a"
+              />
+
+              <Text style={styles.label}>Hora (HH:MM) *</Text>
+              <TextInput
+                style={styles.input}
+                value={hora}
+                onChangeText={setHora}
+                placeholder="14:30"
+                placeholderTextColor="#71717a"
+              />
+
+              <Text style={styles.label}>Motivo *</Text>
+              <TextInput
+                style={styles.input}
+                value={motivo}
+                onChangeText={setMotivo}
+                placeholder="Vacunación, Consulta general, etc."
+                placeholderTextColor="#71717a"
+              />
+
+              <Text style={styles.label}>Notas adicionales</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={notas}
+                onChangeText={setNotas}
+                placeholder="Información adicional..."
+                placeholderTextColor="#71717a"
+                multiline
+                numberOfLines={4}
+              />
+
+              <TouchableOpacity
+                style={[styles.createButton, creating && styles.createButtonDisabled]}
+                onPress={crearCita}
+                disabled={creating}
+              >
+                <LinearGradient
+                  colors={creating ? ['#6b7280', '#4b5563'] : ['#7c3aed', '#a78bfa']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.createButtonGradient}
+                >
+                  {creating ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.createButtonText}>Crear Cita</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {selectedCita && (
         <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}>
@@ -300,5 +487,116 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#a1a1aa',
     fontWeight: '500',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#18181b',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3f3f46',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  modalContent: {
+    padding: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  input: {
+    backgroundColor: '#27272a',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#3f3f46',
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  pickerContainer: {
+    gap: 8,
+  },
+  mascotaOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#27272a',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#3f3f46',
+    gap: 12,
+  },
+  mascotaOptionSelected: {
+    borderColor: '#7c3aed',
+    backgroundColor: '#7c3aed33',
+  },
+  mascotaOptionText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  mascotaOptionTextSelected: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  createButton: {
+    borderRadius: 16,
+    marginTop: 24,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  createButtonDisabled: {
+    opacity: 0.6,
+  },
+  createButtonGradient: {
+    padding: 18,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

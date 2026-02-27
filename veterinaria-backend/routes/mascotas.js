@@ -148,4 +148,68 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// OBTENER HISTORIAL MÉDICO DE UNA MASCOTA
+router.get('/:id/historial', authenticateToken, async (req, res) => {
+  try {
+    const mascotaId = req.params.id;
+
+    // Verificar que la mascota pertenece al usuario
+    const mascota = await getQuery('SELECT * FROM mascotas WHERE id = $1 AND usuario_id = $2', [mascotaId, req.user.id]);
+    if (!mascota) {
+      return res.status(404).json({ success: false, message: 'Mascota no encontrada' });
+    }
+
+    // Obtener historial médico (citas)
+    const historial = await allQuery(`
+      SELECT 
+        id, 
+        fecha_hora as fecha,
+        'Consulta' as tipo,
+        motivo as descripcion,
+        estado
+      FROM citas 
+      WHERE mascota_id = $1 AND estado = 'completada'
+      ORDER BY fecha_hora DESC
+    `, [mascotaId]);
+
+    res.json({ success: true, data: historial });
+  } catch (error) {
+    console.error('Error al obtener historial:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener historial médico' });
+  }
+});
+
+// OBTENER TRATAMIENTOS DE UNA MASCOTA
+router.get('/:id/tratamientos', authenticateToken, async (req, res) => {
+  try {
+    const mascotaId = req.params.id;
+
+    // Verificar que la mascota pertenece al usuario
+    const mascota = await getQuery('SELECT * FROM mascotas WHERE id = $1 AND usuario_id = $2', [mascotaId, req.user.id]);
+    if (!mascota) {
+      return res.status(404).json({ success: false, message: 'Mascota no encontrada' });
+    }
+
+    // Obtener tratamientos activos (basados en citas programadas/en proceso)
+    const tratamientos = await allQuery(`
+      SELECT 
+        id,
+        fecha_hora as fecha_inicio,
+        NULL as fecha_fin,
+        'Tratamiento' as tipo,
+        motivo as descripcion,
+        notas as medicamento,
+        'Según prescripción' as dosis
+      FROM citas 
+      WHERE mascota_id = $1 AND estado IN ('programada', 'en_proceso')
+      ORDER BY fecha_hora DESC
+    `, [mascotaId]);
+
+    res.json({ success: true, data: tratamientos });
+  } catch (error) {
+    console.error('Error al obtener tratamientos:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener tratamientos' });
+  }
+});
+
 module.exports = router;

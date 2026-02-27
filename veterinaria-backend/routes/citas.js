@@ -12,8 +12,8 @@ router.get('/user', authenticateToken, async (req, res) => {
        FROM citas c
        JOIN mascotas m ON c.mascota_id = m.id
        JOIN usuarios u ON c.usuario_id = u.id
-       WHERE c.usuario_id = ?
-       ORDER BY c.fecha DESC, c.hora DESC`,
+       WHERE c.usuario_id = $1
+       ORDER BY c.fecha_hora DESC`,
       [req.user.id]
     );
 
@@ -32,7 +32,7 @@ router.get('/admin/all', authenticateAdmin, async (req, res) => {
        FROM citas c
        JOIN mascotas m ON c.mascota_id = m.id
        JOIN usuarios u ON c.usuario_id = u.id
-       ORDER BY c.fecha DESC, c.hora DESC`
+       ORDER BY c.fecha_hora DESC`
     );
 
     res.json({ success: true, data: citas });
@@ -45,36 +45,25 @@ router.get('/admin/all', authenticateAdmin, async (req, res) => {
 // CREAR CITA (Cliente)
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { mascota_id, fecha, hora, tipo_servicio, descripcion } = req.body;
+    const { mascota_id, fecha_hora, motivo, notas } = req.body;
 
-    if (!mascota_id || !fecha || !hora || !tipo_servicio) {
+    if (!mascota_id || !fecha_hora || !motivo) {
       return res.status(400).json({
         success: false,
-        message: 'mascota_id, fecha, hora y tipo_servicio son requeridos',
+        message: 'mascota_id, fecha_hora y motivo son requeridos',
       });
     }
 
     // Verificar que la mascota pertenece al usuario
-    const mascota = await getQuery('SELECT * FROM mascotas WHERE id = ? AND usuario_id = ?', [mascota_id, req.user.id]);
+    const mascota = await getQuery('SELECT * FROM mascotas WHERE id = $1 AND usuario_id = $2', [mascota_id, req.user.id]);
     if (!mascota) {
       return res.status(404).json({ success: false, message: 'Mascota no encontrada' });
     }
 
-    // Verificar que no haya cita en mismo horario
-    const citaExistente = await getQuery(
-      'SELECT * FROM citas WHERE fecha = ? AND hora = ? AND estado IN ("pendiente", "confirmada")',
-      [fecha, hora]
-    );
-    if (citaExistente) {
-      return res.status(400).json({
-        success: false,
-        message: 'Ya existe una cita en ese horario',
-      });
-    }
-
     const result = await runQuery(
-      'INSERT INTO citas (usuario_id, mascota_id, fecha, hora, tipo_servicio, descripcion) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.user.id, mascota_id, fecha, hora, tipo_servicio, descripcion || null]
+      `INSERT INTO citas (usuario_id, mascota_id, fecha_hora, motivo, notas, estado) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [req.user.id, mascota_id, fecha_hora, motivo, notas || null, 'programada']
     );
 
     res.status(201).json({
@@ -84,11 +73,10 @@ router.post('/', authenticateToken, async (req, res) => {
         id: result.id,
         usuario_id: req.user.id,
         mascota_id,
-        fecha,
-        hora,
-        tipo_servicio,
-        descripcion,
-        estado: 'pendiente',
+        fecha_hora,
+        motivo,
+        notas,
+        estado: 'programada',
       },
     });
   } catch (error) {
@@ -104,7 +92,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       `SELECT c.*, m.nombre AS mascota_nombre, m.tipo AS mascota_tipo
        FROM citas c
        JOIN mascotas m ON c.mascota_id = m.id
-       WHERE c.id = ?`,
+       WHERE c.id = $1`,
       [req.params.id]
     );
 
@@ -124,45 +112,41 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// ACTUALIZAR CITA (Cliente puede actualizar solo si está pendiente)
+// ACTUALIZAR CITA
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const { fecha, hora, tipo_servicio, descripcion, estado, costo, notas_admin } = req.body;
+    const { fecha_hora, motivo, notas, estado } = req.body;
     const citaId = req.params.id;
 
-    const cita = await getQuery('SELECT * FROM citas WHERE id = ?', [citaId]);
+    const cita = await getQuery('SELECT * FROM citas WHERE id = $1', [citaId]);
     if (!cita) {
       return res.status(404).json({ success: false, message: 'Cita no encontrada' });
     }
 
-    // Clientes solo pueden modificar citas pendientes y datos específicos
+    // Clientes solo pueden modificar citas programadas
     if (req.user.rol !== 'admin') {
       if (cita.usuario_id !== req.user.id) {
         return res.status(403).json({ success: false, message: 'No tienes acceso a esta cita' });
       }
-      if (cita.estado !== 'pendiente') {
+      if (cita.estado !== 'programada') {
         return res.status(400).json({
           success: false,
-          message: 'Solo se pueden modificar citas pendientes',
+          message: 'Solo se pueden modificar citas programadas',
         });
       }
     }
 
     const updateQuery = `
       UPDATE citas 
-      SET fecha = ?, hora = ?, tipo_servicio = ?, descripcion = ?, 
-          estado = ?, costo = ?, notas_admin = ? 
-      WHERE id = ?
+      SET fecha_hora = $1, motivo = $2, notas = $3, estado = $4
+      WHERE id = $5
     `;
 
     await runQuery(updateQuery, [
-      fecha || cita.fecha,
-      hora || cita.hora,
-      tipo_servicio || cita.tipo_servicio,
-      descripcion !== undefined ? descripcion : cita.descripcion,
+      fecha_hora || cita.fecha_hora,
+      motivo || cita.motivo,
+      notas !== undefined ? notas : cita.notas,
       estado || cita.estado,
-      costo !== undefined ? costo : cita.costo,
-      notas_admin || cita.notas_admin,
       citaId,
     ]);
 
@@ -178,7 +162,7 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
   try {
     const citaId = req.params.id;
 
-    const cita = await getQuery('SELECT * FROM citas WHERE id = ?', [citaId]);
+    const cita = await getQuery('SELECT * FROM citas WHERE id = $1', [citaId]);
     if (!cita) {
       return res.status(404).json({ success: false, message: 'Cita no encontrada' });
     }
@@ -196,7 +180,7 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
       });
     }
 
-    await runQuery('UPDATE citas SET estado = ? WHERE id = ?', ['cancelada', citaId]);
+    await runQuery('UPDATE citas SET estado = $1 WHERE id = $2', ['cancelada', citaId]);
 
     res.json({ success: true, message: 'Cita cancelada' });
   } catch (error) {
@@ -208,7 +192,7 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
 // ELIMINAR CITA (solo admin)
 router.delete('/:id', authenticateAdmin, async (req, res) => {
   try {
-    await runQuery('DELETE FROM citas WHERE id = ?', [req.params.id]);
+    await runQuery('DELETE FROM citas WHERE id = $1', [req.params.id]);
     res.json({ success: true, message: 'Cita eliminada' });
   } catch (error) {
     console.error('Error al eliminar cita:', error);

@@ -163,9 +163,9 @@ router.get('/:id/historial', authenticateToken, async (req, res) => {
     const historial = await allQuery(`
       SELECT 
         id, 
-        fecha_hora as fecha,
+        TO_CHAR(fecha_hora, 'DD/MM/YYYY HH24:MI') as fecha,
         'Consulta' as tipo,
-        motivo as descripcion,
+        COALESCE(motivo, 'Sin descripción') as descripcion,
         estado
       FROM citas 
       WHERE mascota_id = $1 AND estado = 'completada'
@@ -194,11 +194,11 @@ router.get('/:id/tratamientos', authenticateToken, async (req, res) => {
     const tratamientos = await allQuery(`
       SELECT 
         id,
-        fecha_hora as fecha_inicio,
+        TO_CHAR(fecha_hora, 'DD/MM/YYYY') as fecha_inicio,
         NULL as fecha_fin,
         'Tratamiento' as tipo,
-        motivo as descripcion,
-        notas as medicamento,
+        COALESCE(motivo, 'Tratamiento general') as descripcion,
+        COALESCE(notas, 'Sin especificar') as medicamento,
         'Según prescripción' as dosis
       FROM citas 
       WHERE mascota_id = $1 AND estado IN ('programada', 'en_proceso')

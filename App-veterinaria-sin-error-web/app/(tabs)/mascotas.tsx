@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, To
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import HistorialMascotaModal from '@/components/HistorialMascotaModal';
-import TratamientosMascotaModal from '@/components/TratamientosMascotaModal';
+import HistorialMascotaModal from '../components/HistorialMascotaModal';
+import TratamientosMascotaModal from '../components/TratamientosMascotaModal';
 
 interface Mascota {
   id: number;
@@ -39,7 +39,8 @@ export default function MascotasView() {
 
   const fetchMascotas = async () => {
     try {
-      const response = await fetch('https://api-express-mysql-de-jime.onrender.com/api/v1/mascotas', {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/v1/mascotas`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -113,6 +114,8 @@ export default function MascotasView() {
 
     setSaving(true);
     try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+      
       const body = {
         nombre: nombre.trim(),
         tipo: tipo.trim(),
@@ -123,8 +126,8 @@ export default function MascotasView() {
       };
 
       const url = editingMascota
-        ? `https://api-express-mysql-de-jime.onrender.com/api/v1/mascotas/${editingMascota.id}`
-        : 'https://api-express-mysql-de-jime.onrender.com/api/v1/mascotas';
+        ? `${apiUrl}/api/v1/mascotas/${editingMascota.id}`
+        : `${apiUrl}/api/v1/mascotas`;
 
       console.log('Enviando petición:', {
         url,

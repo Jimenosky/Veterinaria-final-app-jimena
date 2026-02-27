@@ -30,8 +30,8 @@ const HistorialMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose, n
   const fetchHistorial = async () => {
     setLoading(true);
     try {
-      // Cambia la URL por la del endpoint real
-      const response = await fetch(`https://api-express-mysql-de-jime.onrender.com/api/v1/mascotas/${mascotaId}/historial`);
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/v1/mascotas/${mascotaId}/historial`);
       const data = await response.json();
       if (data.success) {
         setHistorial(data.data);

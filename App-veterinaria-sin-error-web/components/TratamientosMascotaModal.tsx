@@ -33,8 +33,8 @@ const TratamientosMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose
   const fetchTratamientos = async () => {
     setLoading(true);
     try {
-      // Cambia la URL por la del endpoint real
-      const response = await fetch(`https://api-express-mysql-de-jime.onrender.com/api/v1/mascotas/${mascotaId}/tratamientos`);
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/v1/mascotas/${mascotaId}/tratamientos`);
       const data = await response.json();
       if (data.success) {
         setTratamientos(data.data);

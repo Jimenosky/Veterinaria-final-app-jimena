@@ -1,8 +1,16 @@
 const https = require('https');
+const http = require('http');
+const url = require('url');
+require('dotenv').config();
+
+const API_URL = process.env.API_URL || 'http://localhost:3001';
+const parsedUrl = url.parse(API_URL);
+const isHttps = parsedUrl.protocol === 'https:';
 
 // Intentar crear admin directo
 const options = {
-  hostname: 'api-express-mysql-de-jime.onrender.com',
+  hostname: parsedUrl.hostname,
+  port: parsedUrl.port || (isHttps ? 443 : 80),
   path: '/api/v1/auth/create-admin-direct',
   method: 'POST',
   headers: {
@@ -12,7 +20,8 @@ const options = {
 
 console.log('🔧 Creando nuevo admin...\n');
 
-const req = https.request(options, (res) => {
+const protocol = isHttps ? https : http;
+const req = protocol.request(options, (res) => {
   let responseData = '';
 
   res.on('data', (chunk) => {

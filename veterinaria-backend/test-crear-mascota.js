@@ -1,4 +1,8 @@
 const https = require('https');
+const http = require('http');
+require('dotenv').config();
+
+const API_URL = process.env.API_URL || 'http://localhost:3001';
 
 function makeRequest(url, options = {}) {
   return new Promise((resolve, reject) => {
@@ -29,7 +33,7 @@ async function testCrearMascota() {
 
     // Login como usuario normal
     console.log('📡 Haciendo login...');
-    const loginResult = await makeRequest('https://api-express-mysql-de-jime.onrender.com/api/v1/auth/login', {
+    const loginResult = await makeRequest(`${API_URL}/api/v1/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,7 +55,7 @@ async function testCrearMascota() {
 
     // Crear mascota
     console.log('📡 Creando mascota de prueba...');
-    const mascotaResult = await makeRequest('https://api-express-mysql-de-jime.onrender.com/api/v1/mascotas', {
+    const mascotaResult = await makeRequest(`${API_URL}/api/v1/mascotas`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

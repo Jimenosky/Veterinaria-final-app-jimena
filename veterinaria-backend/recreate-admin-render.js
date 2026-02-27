@@ -1,7 +1,15 @@
 const https = require('https');
+const http = require('http');
+const url = require('url');
+require('dotenv').config();
+
+const API_URL = process.env.API_URL || 'http://localhost:3001';
+const parsedUrl = url.parse(API_URL);
+const isHttps = parsedUrl.protocol === 'https:';
 
 const options = {
-  hostname: 'api-express-mysql-de-jime.onrender.com',
+  hostname: parsedUrl.hostname,
+  port: parsedUrl.port || (isHttps ? 443 : 80),
   path: '/api/v1/admin/recreate-admin',
   method: 'POST',
   headers: {
@@ -11,7 +19,8 @@ const options = {
 
 console.log('🔧 Recreando admin en Render...\n');
 
-const req = https.request(options, (res) => {
+const protocol = isHttps ? https : http;
+const req = protocol.request(options, (res) => {
   let data = '';
   res.on('data', chunk => data += chunk);
   res.on('end', () => {

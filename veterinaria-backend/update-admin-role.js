@@ -1,6 +1,7 @@
 const { Client } = require('pg');
+require('dotenv').config();
 
-const NEON_CONNECTION = 'postgresql://neondb_owner:npg_24ygwNfLnoCU@ep-snowy-mouse-ai2qasyt-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const NEON_CONNECTION = process.env.DATABASE_URL;
 
 async function updateAdminRole() {
   const pgClient = new Client({ connectionString: NEON_CONNECTION });

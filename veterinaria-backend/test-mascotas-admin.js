@@ -1,4 +1,8 @@
 const https = require('https');
+const http = require('http');
+require('dotenv').config();
+
+const API_URL = process.env.API_URL || 'http://localhost:3001';
 
 function makeRequest(url, options = {}) {
   return new Promise((resolve, reject) => {
@@ -27,9 +31,9 @@ async function testMascotasAdmin() {
   try {
     console.log('🧪 Probando endpoint de mascotas para admin...\n');
 
-    // Primero hacer login como admin
+    // Primero hacer login como  admin
     console.log('📡 Haciendo login como admin...');
-    const loginData = await makeRequest('https://api-express-mysql-de-jime.onrender.com/api/v1/auth/login', {
+    const loginData = await makeRequest(`${API_URL}/api/v1/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -50,7 +54,7 @@ async function testMascotasAdmin() {
 
     // Probar endpoint de mascotas
     console.log('📡 Solicitando todas las mascotas...');
-    const mascotasData = await makeRequest('https://api-express-mysql-de-jime.onrender.com/api/v1/mascotas/admin/all', {
+    const mascotasData = await makeRequest(`${API_URL}/api/v1/mascotas/admin/all`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,

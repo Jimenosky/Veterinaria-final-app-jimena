@@ -1,5 +1,6 @@
 const mysql = require('mysql2/promise');
 const { Client } = require('pg');
+require('dotenv').config();
 
 const MYSQL_CONFIG = {
   host: 'localhost',
@@ -9,7 +10,7 @@ const MYSQL_CONFIG = {
   database: 'usuarios_db'
 };
 
-const NEON_CONNECTION = 'postgresql://neondb_owner:npg_24ygwNfLnoCU@ep-snowy-mouse-ai2qasyt-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const NEON_CONNECTION = process.env.DATABASE_URL;
 
 async function migrateFromMySQLToNeon() {
   console.log('\n🚀 Iniciando migración de MySQL a Neon PostgreSQL...\n');

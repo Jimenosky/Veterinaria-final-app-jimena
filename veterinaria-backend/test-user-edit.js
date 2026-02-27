@@ -1,6 +1,7 @@
 // Script para probar los endpoints de edición y eliminación de usuarios
+require('dotenv').config();
 
-const API_URL = 'https://api-express-mysql-de-jime.onrender.com';
+const API_URL = process.env.API_URL || 'http://localhost:3001';
 
 async function testUserEditAndDelete() {
   console.log('🔄 Probando endpoints de gestión de usuarios...\n');

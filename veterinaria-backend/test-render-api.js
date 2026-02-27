@@ -1,7 +1,11 @@
 // Test rápido del backend en Render
+require('dotenv').config();
+
+const API_URL = process.env.API_URL || 'http://localhost:3001';
+
 const testLogin = async () => {
   try {
-    const response = await fetch('https://api-express-mysql-de-jime.onrender.com/api/v1/auth/login', {
+    const response = await fetch(`${API_URL}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

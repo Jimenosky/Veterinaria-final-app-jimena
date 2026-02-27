@@ -1,6 +1,7 @@
 // Script para probar los endpoints del admin con datos reales
+require('dotenv').config();
 
-const API_URL = 'https://api-express-mysql-de-jime.onrender.com';
+const API_URL = process.env.API_URL || 'http://localhost:3001';
 
 async function testAdminStats() {
   console.log('🔄 Probando endpoints de Render...\n');

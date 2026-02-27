@@ -2,6 +2,27 @@
 
 Un **sistema completo y profesional** que incluye App Móvil, Panel Administrativo Web y API Backend.
 
+## 🔗 Enlaces Importantes
+
+- **📦 Repositorio Actual:** (Pendiente - seguir `GUIA_GITHUB_NUEVO_REPO.md`)
+- **🚀 Backend API (Producción):** (Pendiente - seguir `GUIA_RENDER_NETLIFY.md`)
+- **🌐 Admin Panel (Producción):** (Pendiente - seguir `GUIA_RENDER_NETLIFY.md`)
+- **🗄️ Base de Datos:** Neon PostgreSQL (configurada)
+- **👤 Repositorio Original (v1):** https://github.com/Jimenosky/App-veterinaria2.0
+
+---
+
+## 📚 Documentación de Migración y Deployment
+
+Este proyecto incluye guías completas para configuración en la nube:
+
+1. **📋 [RESUMEN_CAMBIOS.md](RESUMEN_CAMBIOS.md)** - Resumen de cambios y estado actual
+2. **🔄 [MIGRACION_URLS.md](MIGRACION_URLS.md)** - Plan de migración y URLs
+3. **📦 [GUIA_GITHUB_NUEVO_REPO.md](GUIA_GITHUB_NUEVO_REPO.md)** - Crear y configurar repositorio nuevo
+4. **☁️ [GUIA_RENDER_NETLIFY.md](GUIA_RENDER_NETLIFY.md)** - Deploy en Render y Netlify
+
+---
+
 ## 🎯 Objetivo del Proyecto
 
 Extender el sistema administrativo web (construido en Programación IV Generación) hacia una aplicación móvil en React Native conectada al mismo API en Node.js, permitiendo que los usuarios finales puedan sacar citas desde sus dispositivos, reflejando automáticamente los cambios en el panel administrativo.
@@ -93,6 +114,33 @@ O **registra un nuevo usuario** desde la app móvil
 | Backend API | http://localhost:3001 |
 | Admin Panel | http://localhost:5173 |
 | App Móvil (web) | http://localhost:8081 |
+
+---
+
+## ⚙️ Configuración de Variables de Entorno
+
+Este proyecto usa variables de entorno para configuración. **Antes de ejecutar**, crea los archivos `.env`:
+
+### Backend (.env en `veterinaria-backend/`)
+```env
+DATABASE_URL=postgresql://tu-conexion-neon
+API_URL=http://localhost:3001
+JWT_SECRET=tu-secreto-jwt
+NODE_ENV=development
+PORT=3001
+```
+
+### Admin Panel (.env en `veterinaria-admin/`)
+```env
+VITE_API_URL=http://localhost:3001/api/v1
+```
+
+### App Móvil (.env en `App-veterinaria-sin-error-web/`)
+```env
+EXPO_PUBLIC_API_URL=http://localhost:3001
+```
+
+**💡 Nota:** Los archivos `.env.example` en cada carpeta contienen plantillas con instrucciones.
 
 ---
 
@@ -379,5 +427,6 @@ Ahora tienes un **sistema profesional de veterinaria** completo que demuestra:
 **Versión:** 1.0  
 **Última actualización:** Febrero 2026  
 **Estado:** ✅ Completo y funcional
-#   a p p - v e t e r i n a r i a F I n a l  
+#   a p p - v e t e r i n a r i a F I n a l 
+ 
  

@@ -1,10 +1,12 @@
+
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import HistorialMascotaModal from '../components/HistorialMascotaModal';
-import TratamientosMascotaModal from '../components/TratamientosMascotaModal';
+
+import HistorialMascotaModal from '@/components/HistorialMascotaModal';
+import TratamientosMascotaModal from '@/components/TratamientosMascotaModal';
 
 interface Mascota {
   id: number;
@@ -25,9 +27,11 @@ export default function MascotasView() {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingMascota, setEditingMascota] = useState<Mascota | null>(null);
-  const [selectedMascota, setSelectedMascota] = useState<Mascota | null>(null);
-  const [selectedTratamientosMascota, setSelectedTratamientosMascota] = useState<Mascota | null>(null);
-  
+  // Modales de historial y tratamientos
+  const [historialModalVisible, setHistorialModalVisible] = useState(false);
+  const [tratamientosModalVisible, setTratamientosModalVisible] = useState(false);
+  const [selectedMascotaId, setSelectedMascotaId] = useState<number | null>(null);
+  const [selectedMascotaNombre, setSelectedMascotaNombre] = useState<string>('');
   // Form fields
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('');
@@ -75,7 +79,6 @@ export default function MascotasView() {
     setEdad('');
     setPeso('');
     setColor('');
-    
     // Si hay mascota, cargar sus datos
     if (mascota && mascota.id) {
       setEditingMascota(mascota);
@@ -86,7 +89,6 @@ export default function MascotasView() {
       setPeso(mascota.peso?.toString() || '');
       setColor(mascota.color || '');
     }
-    
     setModalVisible(true);
   };
 
@@ -106,16 +108,12 @@ export default function MascotasView() {
       Alert.alert('Error', 'Nombre y tipo son obligatorios');
       return;
     }
-
     if (!token) {
       Alert.alert('Error', 'No hay sesión activa. Por favor inicia sesión nuevamente.');
       return;
     }
-
     setSaving(true);
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-      
       const body = {
         nombre: nombre.trim(),
         tipo: tipo.trim(),
@@ -124,18 +122,16 @@ export default function MascotasView() {
         peso: peso ? parseFloat(peso) : null,
         color: color.trim() || null,
       };
-
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
       const url = editingMascota
         ? `${apiUrl}/api/v1/mascotas/${editingMascota.id}`
         : `${apiUrl}/api/v1/mascotas`;
-
       console.log('Enviando petición:', {
         url,
         method: editingMascota ? 'PUT' : 'POST',
         body,
         hasToken: !!token
       });
-
       const response = await fetch(url, {
         method: editingMascota ? 'PUT' : 'POST',
         headers: {
@@ -144,7 +140,6 @@ export default function MascotasView() {
         },
         body: JSON.stringify(body),
       });
-
       console.log('Respuesta status:', response.status);
       const data = await response.json();
       console.log('Respuesta data:', data);
@@ -175,64 +170,88 @@ export default function MascotasView() {
     return 'paw';
   };
 
-  const getTipoColor = (tipo: string) => {
+  const getTipoColor = (tipo: string): readonly [string, string] => {
     const tipoLower = tipo.toLowerCase();
-    if (tipoLower.includes('perro')) return ['#f59e0b', '#f97316'];
-    if (tipoLower.includes('gato')) return ['#8b5cf6', '#a78bfa'];
-    if (tipoLower.includes('ave')) return ['#38bdf8', '#0ea5e9'];
-    if (tipoLower.includes('pez')) return ['#06b6d4', '#0891b2'];
-    return ['#10b981', '#059669'];
+    if (tipoLower.includes('perro')) return ['#f59e0b', '#f97316'] as const;
+    if (tipoLower.includes('gato')) return ['#8b5cf6', '#a78bfa'] as const;
+    if (tipoLower.includes('ave')) return ['#38bdf8', '#0ea5e9'] as const;
+    if (tipoLower.includes('pez')) return ['#06b6d4', '#0891b2'] as const;
+    return ['#10b981', '#059669'] as const;
   };
 
   const renderMascota = ({ item }: { item: Mascota }) => (
-    <TouchableOpacity 
-      style={styles.mascotaCardWrapper}
-      activeOpacity={0.7}
-      onPress={() => setSelectedMascota(item)}
-      onLongPress={() => setSelectedTratamientosMascota(item)}
-    >
-      <LinearGradient
-        colors={getTipoColor(item.tipo)}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.mascotaCard}
+    <View style={styles.mascotaCardWrapper}>
+      <TouchableOpacity 
+        activeOpacity={0.7}
+        onPress={() => openModal(item)}
       >
-        <View style={styles.mascotaHeader}>
-          <Ionicons name={getTipoIcon(item.tipo) as any} size={40} color="#fff" />
-          <View style={styles.mascotaInfo}>
-            <Text style={styles.mascotaNombre}>{item.nombre}</Text>
-            <Text style={styles.mascotaTipo}>{item.tipo}</Text>
+        <LinearGradient
+          colors={getTipoColor(item.tipo)}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.mascotaCard}
+        >
+          <View style={styles.mascotaHeader}>
+            <Ionicons name={getTipoIcon(item.tipo) as any} size={40} color="#fff" />
+            <View style={styles.mascotaInfo}>
+              <Text style={styles.mascotaNombre}>{item.nombre}</Text>
+              <Text style={styles.mascotaTipo}>{item.tipo}</Text>
+            </View>
           </View>
-        </View>
-
-        <View style={styles.mascotaDetails}>
-          {item.raza && (
-            <View style={styles.detailRow}>
-              <Ionicons name="paw" size={16} color="rgba(255, 255, 255, 0.8)" />
-              <Text style={styles.detailText}>Raza: {item.raza}</Text>
-            </View>
-          )}
-          {item.edad !== undefined && (
-            <View style={styles.detailRow}>
-              <Ionicons name="calendar" size={16} color="rgba(255, 255, 255, 0.8)" />
-              <Text style={styles.detailText}>Edad: {item.edad} {item.edad === 1 ? 'año' : 'años'}</Text>
-            </View>
-          )}
-          {item.peso !== undefined && (
-            <View style={styles.detailRow}>
-              <Ionicons name="scale" size={16} color="rgba(255, 255, 255, 0.8)" />
-              <Text style={styles.detailText}>Peso: {item.peso} kg</Text>
-            </View>
-          )}
-          {item.color && (
-            <View style={styles.detailRow}>
-              <Ionicons name="color-palette" size={16} color="rgba(255, 255, 255, 0.8)" />
-              <Text style={styles.detailText}>Color: {item.color}</Text>
-            </View>
-          )}
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
+          <View style={styles.mascotaDetails}>
+            {item.raza && (
+              <View style={styles.detailRow}>
+                <Ionicons name="paw" size={16} color="rgba(255, 255, 255, 0.8)" />
+                <Text style={styles.detailText}>Raza: {item.raza}</Text>
+              </View>
+            )}
+            {item.edad !== undefined && (
+              <View style={styles.detailRow}>
+                <Ionicons name="calendar" size={16} color="rgba(255, 255, 255, 0.8)" />
+                <Text style={styles.detailText}>Edad: {item.edad} {item.edad === 1 ? 'año' : 'años'}</Text>
+              </View>
+            )}
+            {item.peso !== undefined && (
+              <View style={styles.detailRow}>
+                <Ionicons name="scale" size={16} color="rgba(255, 255, 255, 0.8)" />
+                <Text style={styles.detailText}>Peso: {item.peso} kg</Text>
+              </View>
+            )}
+            {item.color && (
+              <View style={styles.detailRow}>
+                <Ionicons name="color-palette" size={16} color="rgba(255, 255, 255, 0.8)" />
+                <Text style={styles.detailText}>Color: {item.color}</Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+      {/* Botones de acciones */}
+      <View style={styles.mascotaActions}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => {
+            setSelectedMascotaId(item.id);
+            setSelectedMascotaNombre(item.nombre);
+            setHistorialModalVisible(true);
+          }}
+        >
+          <Ionicons name="document-text" size={18} color="#10b981" />
+          <Text style={styles.actionButtonText}>Historial</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => {
+            setSelectedMascotaId(item.id);
+            setSelectedMascotaNombre(item.nombre);
+            setTratamientosModalVisible(true);
+          }}
+        >
+          <Ionicons name="medical" size={18} color="#f59e0b" />
+          <Text style={styles.actionButtonText}>Tratamientos</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   if (loading) {
@@ -261,7 +280,6 @@ export default function MascotasView() {
             Presiona el botón "Nueva Mascota" para agregar tu primera mascota
           </Text>
         </View>
-        
         <TouchableOpacity 
           style={styles.floatingButton}
           activeOpacity={0.8}
@@ -277,7 +295,6 @@ export default function MascotasView() {
             <Text style={styles.floatingButtonText}>Nueva Mascota</Text>
           </LinearGradient>
         </TouchableOpacity>
-
         <Modal
           visible={modalVisible}
           animationType="slide"
@@ -293,7 +310,6 @@ export default function MascotasView() {
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
-
             <ScrollView style={styles.modalContent}>
               <Text style={styles.label}>Nombre *</Text>
               <TextInput
@@ -303,7 +319,6 @@ export default function MascotasView() {
                 placeholder="Nombre de tu mascota"
                 placeholderTextColor="#666"
               />
-
               <Text style={styles.label}>Tipo *</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tipoSelector}>
                 {TIPOS_ANIMALES.map((t) => (
@@ -316,7 +331,6 @@ export default function MascotasView() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-
               <Text style={styles.label}>Raza</Text>
               <TextInput
                 style={styles.input}
@@ -325,7 +339,6 @@ export default function MascotasView() {
                 placeholder="Ej: Labrador, Siamés, etc."
                 placeholderTextColor="#666"
               />
-
               <Text style={styles.label}>Edad (años)</Text>
               <TextInput
                 style={styles.input}
@@ -335,7 +348,6 @@ export default function MascotasView() {
                 placeholderTextColor="#666"
                 keyboardType="numeric"
               />
-
               <Text style={styles.label}>Peso (kg)</Text>
               <TextInput
                 style={styles.input}
@@ -345,7 +357,6 @@ export default function MascotasView() {
                 placeholderTextColor="#666"
                 keyboardType="decimal-pad"
               />
-
               <Text style={styles.label}>Color</Text>
               <TextInput
                 style={styles.input}
@@ -354,7 +365,6 @@ export default function MascotasView() {
                 placeholder="Color principal"
                 placeholderTextColor="#666"
               />
-
               <TouchableOpacity
                 style={[styles.saveButton, saving && styles.saveButtonDisabled]}
                 activeOpacity={0.8}
@@ -372,7 +382,6 @@ export default function MascotasView() {
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.cancelButton}
                 activeOpacity={0.8}
@@ -402,7 +411,6 @@ export default function MascotasView() {
           />
         }
       />
-      
       <TouchableOpacity 
         style={styles.floatingButton}
         activeOpacity={0.8}
@@ -418,22 +426,6 @@ export default function MascotasView() {
           <Text style={styles.floatingButtonText}>Nueva Mascota</Text>
         </LinearGradient>
       </TouchableOpacity>
-      {selectedMascota && (
-        <HistorialMascotaModal
-          mascotaId={selectedMascota.id}
-          visible={true}
-          onClose={() => setSelectedMascota(null)}
-          nombreMascota={selectedMascota.nombre}
-        />
-      )}
-      {selectedTratamientosMascota && (
-        <TratamientosMascotaModal
-          mascotaId={selectedTratamientosMascota.id}
-          visible={true}
-          onClose={() => setSelectedTratamientosMascota(null)}
-          nombreMascota={selectedTratamientosMascota.nombre}
-        />
-      )}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -449,7 +441,6 @@ export default function MascotasView() {
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
           </View>
-
           <ScrollView style={styles.modalContent}>
             <Text style={styles.label}>Nombre *</Text>
             <TextInput
@@ -459,7 +450,6 @@ export default function MascotasView() {
               placeholder="Nombre de tu mascota"
               placeholderTextColor="#666"
             />
-
             <Text style={styles.label}>Tipo *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tipoSelector}>
               {TIPOS_ANIMALES.map((t) => (
@@ -472,7 +462,6 @@ export default function MascotasView() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-
             <Text style={styles.label}>Raza</Text>
             <TextInput
               style={styles.input}
@@ -481,7 +470,6 @@ export default function MascotasView() {
               placeholder="Ej: Labrador, Siamés, etc."
               placeholderTextColor="#666"
             />
-
             <Text style={styles.label}>Edad (años)</Text>
             <TextInput
               style={styles.input}
@@ -491,7 +479,6 @@ export default function MascotasView() {
               placeholderTextColor="#666"
               keyboardType="numeric"
             />
-
             <Text style={styles.label}>Peso (kg)</Text>
             <TextInput
               style={styles.input}
@@ -501,7 +488,6 @@ export default function MascotasView() {
               placeholderTextColor="#666"
               keyboardType="decimal-pad"
             />
-
             <Text style={styles.label}>Color</Text>
             <TextInput
               style={styles.input}
@@ -510,7 +496,6 @@ export default function MascotasView() {
               placeholder="Color principal"
               placeholderTextColor="#666"
             />
-
             <TouchableOpacity
               style={[styles.saveButton, saving && styles.saveButtonDisabled]}
               activeOpacity={0.8}
@@ -528,7 +513,6 @@ export default function MascotasView() {
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
-
             <TouchableOpacity
               style={styles.cancelButton}
               activeOpacity={0.8}
@@ -539,6 +523,24 @@ export default function MascotasView() {
           </ScrollView>
         </View>
       </Modal>
+      {/* Modal de Historial */}
+      {selectedMascotaId && (
+        <HistorialMascotaModal
+          mascotaId={selectedMascotaId}
+          visible={historialModalVisible}
+          onClose={() => setHistorialModalVisible(false)}
+          nombreMascota={selectedMascotaNombre}
+        />
+      )}
+      {/* Modal de Tratamientos */}
+      {selectedMascotaId && (
+        <TratamientosMascotaModal
+          mascotaId={selectedMascotaId}
+          visible={tratamientosModalVisible}
+          onClose={() => setTratamientosModalVisible(false)}
+          nombreMascota={selectedMascotaNombre}
+        />
+      )}
     </View>
   );
 }
@@ -749,5 +751,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  mascotaActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#3f3f46',
+    borderRadius: 8,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });

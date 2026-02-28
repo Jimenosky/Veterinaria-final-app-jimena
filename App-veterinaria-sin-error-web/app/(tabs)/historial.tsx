@@ -1,32 +1,77 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
+import HistorialMascotaModal from '../../components/HistorialMascotaModal';
 
+interface Mascota {
+  id: number;
+  nombre: string;
+  tipo: string;
+}
 export default function HistorialView() {
-  // TODO: Implementar lógica de historial médico desde backend
+  const { token } = useAuth();
+  const [mascotas, setMascotas] = useState<Mascota[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedMascota, setSelectedMascota] = useState<Mascota | null>(null);
+
+  const fetchMascotas = async () => {
+    try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/v1/mascotas`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMascotas(data.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar mascotas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMascotas();
+  }, []);
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#10b981" />
+        <Text style={styles.loadingText}>Cargando mascotas...</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <LinearGradient
-        colors={['#10b981', '#059669']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.comingSoonCard}
-      >
-        <Text style={styles.emojiIcon}>📋</Text>
-        <Text style={styles.comingSoonTitle}>Historial Médico</Text>
-        <Text style={styles.comingSoonText}>
-          Accede al historial médico completo de tus mascotas:{'\n\n'}
-          • Consultas anteriores{'\n'}
-          • Diagnósticos{'\n'}
-          • Procedimientos realizados{'\n'}
-          • Vacunas y desparasitaciones{'\n'}
-          • Análisis y estudios
-        </Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>Próximamente</Text>
-        </View>
-      </LinearGradient>
-    </ScrollView>
+    <View style={styles.container}>
+      <Text style={styles.title}>Selecciona una mascota para ver historial médico</Text>
+      <FlatList
+        data={mascotas}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.mascotaCard}
+            onPress={() => setSelectedMascota(item)}
+          >
+            <Ionicons name="paw" size={28} color="#10b981" />
+            <Text style={styles.mascotaNombre}>{item.nombre} ({item.tipo})</Text>
+          </TouchableOpacity>
+        )}
+        contentContainerStyle={styles.listContainer}
+      />
+      {selectedMascota && (
+        <HistorialMascotaModal
+          mascotaId={selectedMascota.id}
+          visible={!!selectedMascota}
+          onClose={() => setSelectedMascota(null)}
+          nombreMascota={selectedMascota.nombre}
+        />
+      )}
+    </View>
   );
 }
 
@@ -34,45 +79,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
+    backgroundColor: '#18181b',
   },
-  comingSoonCard: {
-    borderRadius: 20,
-    padding: 40,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  emojiIcon: {
-    fontSize: 80,
-  },
-  comingSoonTitle: {
-    fontSize: 32,
+  title: {
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  comingSoonText: {
-    fontSize: 16,
-    color: '#fff',
+    color: '#10b981',
+    marginBottom: 20,
     textAlign: 'center',
-    lineHeight: 24,
-    opacity: 0.95,
   },
-  badge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 24,
+  listContainer: {
+    gap: 12,
   },
-  badgeText: {
+  mascotaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#27272a',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 8,
+    gap: 16,
+  },
+  mascotaNombre: {
+    fontSize: 18,
     color: '#fff',
-    fontSize: 14,
     fontWeight: '600',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#10b981',
   },
 });

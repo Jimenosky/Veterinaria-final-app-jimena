@@ -40,7 +40,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const getBaseUrl = () => {
-    // Usar variable de entorno si está disponible, sino usar localhost/IP local según plataforma
     const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
     if (envApiUrl) {
       return envApiUrl;
@@ -48,22 +47,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return Platform.OS === 'web' ? 'http://localhost:3001' : 'http://192.168.1.8:3001';
   };
 
+  // Forzar logout automático al iniciar la app
   useEffect(() => {
-    const loadStoredAuth = async () => {
+    const forceLogout = async () => {
       try {
-        const storedToken = await AsyncStorage.getItem('token');
-        const storedUser = await AsyncStorage.getItem('user');
-        if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-        }
+        await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem('user');
+        setToken(null);
+        setUser(null);
+        console.log('Logout automático: token y usuario eliminados');
       } catch (error) {
-        console.error('Error loading stored auth:', error);
+        console.error('Error forzando logout:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    loadStoredAuth();
+    forceLogout();
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; user?: User }> => {

@@ -14,18 +14,31 @@ const debugRoutes = require('./routes/debug');
 const recreateAdminRoutes = require('./routes/recreate-admin');
 const usersRoutes = require('./routes/users');
 const adminStatsRoutes = require('./routes/admin-stats');
+const citasClienteRoutes = require('./routes/citas-cliente');
 
 const app = express();
 
 // Middleware
+// Middleware extra para forzar parseo JSON
+app.use((req, res, next) => {
+  if (req.headers['content-type'] === 'application/json' && typeof req.body === 'string') {
+    try {
+      req.body = JSON.parse(req.body);
+    } catch (e) {
+      req.body = {};
+    }
+  }
+  next();
+});
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Rutas
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/mascotas', mascotasRoutes);
 app.use('/api/v1/citas', citasRoutes);
+app.use('/api/v1/citas-cliente', citasClienteRoutes);
 app.use('/api/v1/fix', fixRoleRoutes);
 app.use('/api/v1/debug', debugRoutes);
 app.use('/api/v1/admin', recreateAdminRoutes);

@@ -93,6 +93,63 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_citas_fecha ON citas(fecha)
     `);
 
+    // Tabla de Historial Médico
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS historial_medico (
+        id SERIAL PRIMARY KEY,
+        mascota_id INT NOT NULL,
+        cita_id INT,
+        fecha DATE NOT NULL,
+        tipo_servicio VARCHAR(255) NOT NULL,
+        descripcion TEXT,
+        diagnostico TEXT,
+        tratamiento TEXT,
+        veterinario VARCHAR(255),
+        costo DECIMAL(10, 2),
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (mascota_id) REFERENCES mascotas(id) ON DELETE CASCADE,
+        FOREIGN KEY (cita_id) REFERENCES citas(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Crear índices para historial médico
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_historial_mascota ON historial_medico(mascota_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_historial_fecha ON historial_medico(fecha)
+    `);
+
+    // Tabla de Tratamientos
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tratamientos (
+        id SERIAL PRIMARY KEY,
+        mascota_id INT NOT NULL,
+        cita_id INT,
+        nombre VARCHAR(255) NOT NULL,
+        descripcion TEXT,
+        medicamento VARCHAR(255),
+        dosis VARCHAR(100),
+        frecuencia VARCHAR(100),
+        duracion VARCHAR(100),
+        fecha_inicio DATE NOT NULL,
+        fecha_fin DATE,
+        estado VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'completado', 'suspendido')),
+        notas TEXT,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (mascota_id) REFERENCES mascotas(id) ON DELETE CASCADE,
+        FOREIGN KEY (cita_id) REFERENCES citas(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Crear índices para tratamientos
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_tratamientos_mascota ON tratamientos(mascota_id)
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_tratamientos_estado ON tratamientos(estado)
+    `);
+
     console.log('✅ Tablas de base de datos verificadas');
   } catch (error) {
     if (error.code !== '42P07') { // 42P07 = table already exists

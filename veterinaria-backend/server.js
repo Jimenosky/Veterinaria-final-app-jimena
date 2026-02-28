@@ -15,6 +15,8 @@ const recreateAdminRoutes = require('./routes/recreate-admin');
 const usersRoutes = require('./routes/users');
 const adminStatsRoutes = require('./routes/admin-stats');
 const citasClienteRoutes = require('./routes/citas-cliente');
+const tratamientosRoutes = require('./routes/tratamientos');
+const historialRoutes = require('./routes/historial');
 
 const app = express();
 
@@ -39,6 +41,8 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/mascotas', mascotasRoutes);
 app.use('/api/v1/citas', citasRoutes);
 app.use('/api/v1/citas-cliente', citasClienteRoutes);
+app.use('/api/v1/tratamientos', tratamientosRoutes);
+app.use('/api/v1/historial', historialRoutes);
 app.use('/api/v1/fix', fixRoleRoutes);
 app.use('/api/v1/debug', debugRoutes);
 app.use('/api/v1/admin', recreateAdminRoutes);

@@ -6,12 +6,16 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface TratamientoItem {
   id: number;
-  fecha_inicio: string;
-  fecha_fin?: string;
-  tipo: string;
-  descripcion: string;
+  nombre: string;
+  descripcion?: string;
   medicamento?: string;
   dosis?: string;
+  frecuencia?: string;
+  duracion?: string;
+  fecha_inicio: string;
+  fecha_fin?: string;
+  estado: string;
+  notas?: string;
 }
 
 interface Props {
@@ -38,27 +42,28 @@ const TratamientosMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose
     setErrorMsg(null);
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/v1/mascotas/${mascotaId}/tratamientos`, {
+      const response = await fetch(`${apiUrl}/api/v1/tratamientos/mascota/${mascotaId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      // Si la respuesta no es JSON (por ejemplo, HTML de error), manejarlo
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
+      
+      if (!response.ok) {
         setErrorMsg('No se pudo conectar con el servidor. Intenta más tarde.');
         setTratamientos([]);
         return;
       }
+
+      const data = await response.json();
+      
       if (data.success) {
-        setTratamientos(data.data);
+        setTratamientos(data.data || []);
       } else {
         setTratamientos([]);
         setErrorMsg(data.message || 'No se pudieron cargar los tratamientos.');
       }
     } catch (error) {
+      console.error('Error al cargar tratamientos:', error);
       setTratamientos([]);
       setErrorMsg('Error de red o autenticación. Intenta de nuevo.');
     } finally {
@@ -96,16 +101,82 @@ const TratamientosMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose
             </View>
           ) : (
             <ScrollView style={{ marginTop: 16 }}>
-              {tratamientos.map((item) => (
-                <View key={item.id} style={styles.itemCard}>
-                  <LinearGradient colors={["#f59e0b", "#fbbf24"]} style={styles.itemHeader}>
-                    <Ionicons name="medkit" size={20} color="#fff" />
-                    <Text style={styles.itemTipo}>{item.tipo}</Text>
-                  </LinearGradient>
-                  <Text style={styles.itemFecha}>{item.fecha_inicio}</Text>
-                  <Text style={styles.itemDescripcion}>{item.descripcion}</Text>
-                </View>
-              ))}
+              {tratamientos.map((item) => {
+                const estadoColor = item.estado === 'activo' ? '#34d399' : item.estado === 'completado' ? '#3b82f6' : '#ef4444';
+                const estadoBg = item.estado === 'activo' ? '#34d39933' : item.estado === 'completado' ? '#3b82f633' : '#ef444433';
+                
+                return (
+                  <View key={item.id} style={[styles.itemCard, { borderLeftWidth: 4, borderLeftColor: estadoColor }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                        <Ionicons name="medkit" size={20} color="#f59e0b" style={{ marginRight: 8 }} />
+                        <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', flex: 1 }}>{item.nombre}</Text>
+                      </View>
+                      <View style={{ backgroundColor: estadoBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                        <Text style={{ color: estadoColor, fontSize: 11, fontWeight: '700' }}>
+                          {item.estado.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {item.descripcion && (
+                      <Text style={{ color: '#d4d4d8', fontSize: 14, marginBottom: 12, lineHeight: 20 }}>
+                        {item.descripcion}
+                      </Text>
+                    )}
+
+                    <View style={{ backgroundColor: '#27272a', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                        <Text style={{ color: '#a78bfa', fontSize: 13, fontWeight: '600', width: 100 }}>📅 Inicio:</Text>
+                        <Text style={{ color: '#fff', fontSize: 13 }}>
+                          {new Date(item.fecha_inicio).toLocaleDateString('es-ES')}
+                        </Text>
+                      </View>
+                      {item.fecha_fin && (
+                        <View style={{ flexDirection: 'row' }}>
+                          <Text style={{ color: '#a78bfa', fontSize: 13, fontWeight: '600', width: 100 }}>📅 Fin:</Text>
+                          <Text style={{ color: '#fff', fontSize: 13 }}>
+                            {new Date(item.fecha_fin).toLocaleDateString('es-ES')}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {item.medicamento && (
+                      <View style={{ backgroundColor: '#7c3aed22', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                        <Text style={{ color: '#a78bfa', fontSize: 13, fontWeight: '600', marginBottom: 4 }}>💊 Medicamento:</Text>
+                        <Text style={{ color: '#fff', fontSize: 14, marginBottom: 8 }}>{item.medicamento}</Text>
+                        {item.dosis && (
+                          <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                            <Text style={{ color: '#a1a1aa', fontSize: 12 }}>Dosis: </Text>
+                            <Text style={{ color: '#d4d4d8', fontSize: 12, fontWeight: '600' }}>{item.dosis}</Text>
+                          </View>
+                        )}
+                        {item.frecuencia && (
+                          <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                            <Text style={{ color: '#a1a1aa', fontSize: 12 }}>Frecuencia: </Text>
+                            <Text style={{ color: '#d4d4d8', fontSize: 12, fontWeight: '600' }}>{item.frecuencia}</Text>
+                          </View>
+                        )}
+                        {item.duracion && (
+                          <View style={{ flexDirection: 'row' }}>
+                            <Text style={{ color: '#a1a1aa', fontSize: 12 }}>Duración: </Text>
+                            <Text style={{ color: '#d4d4d8', fontSize: 12, fontWeight: '600' }}>{item.duracion}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {item.notas && (
+                      <View style={{ marginTop: 8, padding: 10, backgroundColor: '#27272a', borderRadius: 8 }}>
+                        <Text style={{ color: '#a1a1aa', fontSize: 12, fontStyle: 'italic' }}>
+                          📝 {item.notas}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
             </ScrollView>
           )}
         </View>
@@ -127,49 +198,24 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
   },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#f59e0b',
+    marginBottom: 12,
+  },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
     color: '#a1a1aa',
   },
-  content: {
-    maxHeight: '70%',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#a1a1aa',
-    textAlign: 'center',
-    marginTop: 24,
-  },
-  card: {
+  itemCard: {
+    backgroundColor: '#18181b',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  cardDate: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 4,
-  },
-  cardType: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  cardDesc: {
-    fontSize: 15,
-    color: '#fff',
-  },
-  cardMed: {
-    fontSize: 14,
-    color: '#fff',
-    marginTop: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#27272a',
   },
 });
 

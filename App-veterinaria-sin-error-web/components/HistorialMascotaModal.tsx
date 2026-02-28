@@ -7,8 +7,12 @@ import { Ionicons } from '@expo/vector-icons';
 interface HistorialItem {
   id: number;
   fecha: string;
-  tipo: string;
-  descripcion: string;
+  tipo_servicio: string;
+  descripcion?: string;
+  diagnostico?: string;
+  tratamiento?: string;
+  veterinario?: string;
+  costo?: number;
 }
 
 interface Props {
@@ -35,14 +39,22 @@ const HistorialMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose, n
     setErrorMsg('');
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/v1/mascotas/${mascotaId}/historial`, {
+      const response = await fetch(`${apiUrl}/api/v1/historial/mascota/${mascotaId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+      
+      if (!response.ok) {
+        setHistorial([]);
+        setErrorMsg('No se pudo conectar con el servidor. Intenta más tarde.');
+        return;
+      }
+      
       const data = await response.json();
+      
       if (data.success) {
-        setHistorial(data.data);
+        setHistorial(data.data || []);
       } else if (data.message && (data.message.toLowerCase().includes('token') || data.message.toLowerCase().includes('autoriz'))) {
         setHistorial([]);
         setErrorMsg('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
@@ -51,6 +63,7 @@ const HistorialMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose, n
         setErrorMsg(data.message || 'No se pudo cargar el historial.');
       }
     } catch (error) {
+      console.error('Error al cargar historial:', error);
       setHistorial([]);
       setErrorMsg('No se pudo conectar con el servidor. Intenta más tarde.');
     } finally {
@@ -93,11 +106,72 @@ const HistorialMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose, n
                 </View>
               ) : (
                 historial.map((item) => (
-                  <LinearGradient key={item.id} colors={["#10b981", "#059669"]} style={styles.card}>
-                    <Text style={styles.cardDate}>{item.fecha}</Text>
-                    <Text style={styles.cardType}>{item.tipo}</Text>
-                    <Text style={styles.cardDesc}>{item.descripcion}</Text>
-                  </LinearGradient>
+                  <View key={item.id} style={styles.card}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                      <LinearGradient colors={["#10b981", "#059669"]} style={{ padding: 8, borderRadius: 8, marginRight: 12 }}>
+                        <Ionicons name="document-text" size={20} color="#fff" />
+                      </LinearGradient>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+                          {item.tipo_servicio}
+                        </Text>
+                        <Text style={{ color: '#10b981', fontSize: 13, fontWeight: '600' }}>
+                          📅 {new Date(item.fecha).toLocaleDateString('es-ES', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {item.descripcion && (
+                      <View style={{ backgroundColor: '#27272a', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                        <Text style={{ color: '#a78bfa', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
+                          📋 Descripción:
+                        </Text>
+                        <Text style={{ color: '#d4d4d8', fontSize: 14, lineHeight: 20 }}>
+                          {item.descripcion}
+                        </Text>
+                      </View>
+                    )}
+
+                    {item.diagnostico && (
+                      <View style={{ backgroundColor: '#10b98122', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                        <Text style={{ color: '#10b981', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
+                          🔬 Diagnóstico:
+                        </Text>
+                        <Text style={{ color: '#d4d4d8', fontSize: 14, lineHeight: 20 }}>
+                          {item.diagnostico}
+                        </Text>
+                      </View>
+                    )}
+
+                    {item.tratamiento && (
+                      <View style={{ backgroundColor: '#3b82f622', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                        <Text style={{ color: '#3b82f6', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
+                          💊 Tratamiento aplicado:
+                        </Text>
+                        <Text style={{ color: '#d4d4d8', fontSize: 14, lineHeight: 20 }}>
+                          {item.tratamiento}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                      {item.veterinario && (
+                        <Text style={{ color: '#a1a1aa', fontSize: 12 }}>
+                          👨‍⚕️ {item.veterinario}
+                        </Text>
+                      )}
+                      {item.costo && item.costo > 0 && (
+                        <Text style={{ color: '#34d399', fontSize: 16, fontWeight: 'bold' }}>
+                          ${Number(item.costo).toFixed(2)}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
                 ))
               )}
             </ScrollView>
@@ -116,8 +190,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    width: '90%',
-    maxHeight: '80%',
+    width: '95%',
+    maxHeight: '85%',
     backgroundColor: '#18181b',
     borderRadius: 20,
     padding: 20,
@@ -146,36 +220,13 @@ const styles = StyleSheet.create({
   content: {
     maxHeight: '70%',
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#a1a1aa',
-    textAlign: 'center',
-    marginTop: 24,
-  },
   card: {
+    backgroundColor: '#18181b',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  cardDate: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 4,
-  },
-  cardType: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  cardDesc: {
-    fontSize: 15,
-    color: '#fff',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#27272a',
   },
 });
 

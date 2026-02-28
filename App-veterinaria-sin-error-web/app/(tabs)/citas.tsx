@@ -126,6 +126,7 @@ export default function CitasScreen() {
   const [notas, setNotas] = useState('');
   const [showDateSelector, setShowDateSelector] = useState(false);
   const [showHourSelector, setShowHourSelector] = useState(false);
+  const [horariosDisponibles, setHorariosDisponibles] = useState([]);
 
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -167,6 +168,38 @@ export default function CitasScreen() {
       setMascotas(mascotasArray.filter(m => m && m.id && m.nombre));
     } catch {
       setMascotas([]);
+    }
+  };
+
+  const fetchHorariosDisponibles = async (fechaSeleccionada) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/citas/disponibilidad/${fechaSeleccionada}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      
+      if (data.success && data.horarios) {
+        setHorariosDisponibles(data.horarios);
+      } else {
+        // Si falla, generar horarios por defecto
+        const horarios = [];
+        for (let h = 8; h <= 20; h++) {
+          horarios.push({ hora: `${h.toString().padStart(2, '0')}:00`, disponible: true });
+          if (h < 20) horarios.push({ hora: `${h.toString().padStart(2, '0')}:30`, disponible: true });
+        }
+        setHorariosDisponibles(horarios);
+      }
+    } catch (error) {
+      console.error('Error al obtener horarios:', error);
+      // Generar horarios por defecto en caso de error
+      const horarios = [];
+      for (let h = 8; h <= 20; h++) {
+        horarios.push({ hora: `${h.toString().padStart(2, '0')}:00`, disponible: true });
+        if (h < 20) horarios.push({ hora: `${h.toString().padStart(2, '0')}:30`, disponible: true });
+      }
+      setHorariosDisponibles(horarios);
     }
   };
 
@@ -262,40 +295,96 @@ export default function CitasScreen() {
     return hours;
   };
 
-  const renderCita = ({ item }) => (
-    <View style={{ marginBottom: 18, backgroundColor: '#232136', borderRadius: 18, padding: 18 }}>
-      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>
-        {item?.mascota_nombre || 'Mascota'}
-      </Text>
-      <Text style={{ color: '#a1a1aa', fontSize: 15 }}>
-        {item?.tipo_servicio || 'Tipo de servicio'}
-      </Text>
-      <Text style={{ color: '#fff', fontSize: 15 }}>
-        {item?.fecha ? new Date(item.fecha).toLocaleDateString('es-ES') : 'Fecha no disponible'} - {item?.hora || 'Hora'}
-      </Text>
-      <View style={{ 
-        marginTop: 8, 
-        paddingHorizontal: 12, 
-        paddingVertical: 6, 
-        backgroundColor: item?.estado === 'pendiente' ? '#fbbf2433' : item?.estado === 'confirmada' ? '#34d39933' : '#ef444433',
-        borderRadius: 8,
-        alignSelf: 'flex-start'
-      }}>
-        <Text style={{ 
-          color: item?.estado === 'pendiente' ? '#fbbf24' : item?.estado === 'confirmada' ? '#34d399' : '#ef4444',
-          fontSize: 12,
-          fontWeight: '600'
+  const renderCita = ({ item }) => {
+    const estadoColors = {
+      pendiente: { bg: '#fbbf2433', text: '#fbbf24', icon: '⏳' },
+      confirmada: { bg: '#3b82f633', text: '#3b82f6', icon: '✓' },
+      completada: { bg: '#34d39933', text: '#34d399', icon: '✓✓' },
+      cancelada: { bg: '#ef444433', text: '#ef4444', icon: '✗' }
+    };
+    
+    const estadoColor = estadoColors[item?.estado] || estadoColors.pendiente;
+    
+    return (
+      <View style={{ marginBottom: 18, backgroundColor: '#18181b', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#27272a' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 20, marginBottom: 4 }}>
+              🐾 {item?.mascota_nombre || 'Mascota'}
+            </Text>
+            <Text style={{ color: '#a1a1aa', fontSize: 14 }}>
+              {item?.mascota_tipo || 'Tipo'}
+            </Text>
+          </View>
+          <View style={{ 
+            paddingHorizontal: 12, 
+            paddingVertical: 6, 
+            backgroundColor: estadoColor.bg,
+            borderRadius: 8,
+          }}>
+            <Text style={{ 
+              color: estadoColor.text,
+              fontSize: 12,
+              fontWeight: '700'
+            }}>
+              {estadoColor.icon} {item?.estado?.toUpperCase() || 'ESTADO'}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={{ backgroundColor: '#27272a', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: '600', marginRight: 8 }}>📅 Fecha:</Text>
+            <Text style={{ color: '#fff', fontSize: 15 }}>
+              {item?.fecha ? new Date(item.fecha + 'T00:00:00').toLocaleDateString('es-ES', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              }) : 'Sin fecha'}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: '600', marginRight: 8 }}>⏰ Hora:</Text>
+            <Text style={{ color: '#fff', fontSize: 15 }}>
+              {item?.hora ? item.hora.substring(0, 5) : 'Sin hora'}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={{ 
+          backgroundColor: '#7c3aed22', 
+          borderRadius: 12, 
+          padding: 12,
+          borderLeftWidth: 3,
+          borderLeftColor: '#7c3aed'
         }}>
-          {item?.estado?.toUpperCase() || 'ESTADO'}
-        </Text>
+          <Text style={{ color: '#a78bfa', fontSize: 13, fontWeight: '600', marginBottom: 4 }}>
+            Servicio:
+          </Text>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '500' }}>
+            {item?.tipo_servicio || 'Tipo de servicio'}
+          </Text>
+        </View>
+        
+        {item?.descripcion && (
+          <View style={{ marginTop: 8, padding: 12, backgroundColor: '#27272a', borderRadius: 12 }}>
+            <Text style={{ color: '#a1a1aa', fontSize: 13, fontStyle: 'italic' }}>
+              💬 {item.descripcion}
+            </Text>
+          </View>
+        )}
+        
+        {item?.costo && (
+          <View style={{ marginTop: 8, alignItems: 'flex-end' }}>
+            <Text style={{ color: '#34d399', fontSize: 18, fontWeight: 'bold' }}>
+              ${Number(item.costo).toFixed(2)}
+            </Text>
+          </View>
+        )}
       </View>
-      {item?.descripcion && (
-        <Text style={{ color: '#d4d4d8', fontSize: 14, fontStyle: 'italic', marginTop: 8 }}>
-          {item.descripcion}
-        </Text>
-      )}
-    </View>
-  );
+    );
+  };
 
   function RenderEmpty() {
     return (
@@ -382,12 +471,30 @@ export default function CitasScreen() {
               </TouchableOpacity>
               <Modal visible={showDateSelector} transparent animationType="fade">
                 <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'center', alignItems:'center' }}>
-                  <View style={{ backgroundColor:'#18181b', borderRadius:16, padding:20, width:'90%' }}>
-                    <Text style={{ color:'#fff', fontSize:18, fontWeight:'bold', marginBottom:12 }}>Selecciona una fecha</Text>
-                    <ScrollView style={{ maxHeight:300 }}>
+                  <View style={{ backgroundColor:'#18181b', borderRadius:16, padding:20, width:'90%', maxHeight:'70%' }}>
+                    <Text style={{ color:'#fff', fontSize:20, fontWeight:'bold', marginBottom:16 }}>📅 Selecciona una fecha</Text>
+                    <ScrollView style={{ maxHeight:400 }}>
                       {getAvailableDates().map(d => (
-                        <TouchableOpacity key={d} style={{ padding:12 }} onPress={() => { setFecha(d); setShowDateSelector(false); setHora(''); }}>
-                          <Text style={{ color:'#fff', fontSize:16 }}>{d}</Text>
+                        <TouchableOpacity 
+                          key={d} 
+                          style={{ 
+                            padding:16, 
+                            backgroundColor: fecha === d ? '#7c3aed' : '#27272a',
+                            borderRadius:12,
+                            marginBottom:8,
+                            borderWidth: 1,
+                            borderColor: fecha === d ? '#a78bfa' : '#3f3f46'
+                          }} 
+                          onPress={async () => { 
+                            setFecha(d); 
+                            setHora(''); 
+                            await fetchHorariosDisponibles(d);
+                            setShowDateSelector(false);
+                          }}
+                        >
+                          <Text style={{ color:'#fff', fontSize:16, fontWeight: fecha === d ? 'bold' : 'normal' }}>
+                            {new Date(d).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                          </Text>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -403,12 +510,46 @@ export default function CitasScreen() {
               </TouchableOpacity>
               <Modal visible={showHourSelector} transparent animationType="fade">
                 <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'center', alignItems:'center' }}>
-                  <View style={{ backgroundColor:'#18181b', borderRadius:16, padding:20, width:'90%' }}>
-                    <Text style={{ color:'#fff', fontSize:18, fontWeight:'bold', marginBottom:12 }}>Selecciona una hora</Text>
-                    <ScrollView style={{ maxHeight:300 }}>
-                      {getAvailableHours().map(h => (
-                        <TouchableOpacity key={h} style={{ padding:12 }} onPress={() => { setHora(h); setShowHourSelector(false); }}>
-                          <Text style={{ color:'#fff', fontSize:16 }}>{h}</Text>
+                  <View style={{ backgroundColor:'#18181b', borderRadius:16, padding:20, width:'90%', maxHeight:'70%' }}>
+                    <Text style={{ color:'#fff', fontSize:20, fontWeight:'bold', marginBottom:8 }}>⏰ Selecciona una hora</Text>
+                    <Text style={{ color:'#a1a1aa', fontSize:14, marginBottom:16 }}>Cada cita dura 30 minutos</Text>
+                    <ScrollView style={{ maxHeight:400 }}>
+                      {(horariosDisponibles.length > 0 ? horariosDisponibles : getAvailableHours().map(h => ({ hora: h, disponible: true }))).map(horario => (
+                        <TouchableOpacity 
+                          key={horario.hora} 
+                          style={{ 
+                            padding:16, 
+                            backgroundColor: !horario.disponible ? '#3f3f46' : hora === horario.hora ? '#7c3aed' : '#27272a',
+                            borderRadius:12,
+                            marginBottom:8,
+                            borderWidth: 1,
+                            borderColor: !horario.disponible ? '#52525b' : hora === horario.hora ? '#a78bfa' : '#3f3f46',
+                            opacity: !horario.disponible ? 0.5 : 1,
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }} 
+                          onPress={() => {
+                            if (horario.disponible) {
+                              setHora(horario.hora);
+                              setShowHourSelector(false);
+                            }
+                          }}
+                          disabled={!horario.disponible}
+                        >
+                          <Text style={{ color:'#fff', fontSize:18, fontWeight: hora === horario.hora ? 'bold' : 'normal' }}>
+                            {horario.hora}
+                          </Text>
+                          {!horario.disponible && (
+                            <Text style={{ color:'#f87171', fontSize:12, fontWeight:'600' }}>
+                              ❌ OCUPADO
+                            </Text>
+                          )}
+                          {horario.disponible && hora !== horario.hora && (
+                            <Text style={{ color:'#34d399', fontSize:12, fontWeight:'600' }}>
+                              ✓ Disponible
+                            </Text>
+                          )}
                         </TouchableOpacity>
                       ))}
                     </ScrollView>

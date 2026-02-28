@@ -42,28 +42,39 @@ const TratamientosMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose
     setErrorMsg(null);
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/v1/tratamientos/mascota/${mascotaId}`, {
+      const url = `${apiUrl}/api/v1/tratamientos/mascota/${mascotaId}`;
+      
+      console.log('🔍 Buscando tratamientos para mascota:', mascotaId);
+      console.log('🌐 URL:', url);
+      
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       
+      console.log('📡 Status respuesta:', response.status);
+      
       if (!response.ok) {
+        console.error('❌ Error en respuesta:', response.status);
         setErrorMsg('No se pudo conectar con el servidor. Intenta más tarde.');
         setTratamientos([]);
         return;
       }
 
       const data = await response.json();
+      console.log('📦 Datos recibidos:', data);
       
       if (data.success) {
+        console.log(`✅ ${data.data?.length || 0} tratamientos encontrados`);
         setTratamientos(data.data || []);
       } else {
+        console.log('⚠️ No hay tratamientos:', data.message);
         setTratamientos([]);
         setErrorMsg(data.message || 'No se pudieron cargar los tratamientos.');
       }
     } catch (error) {
-      console.error('Error al cargar tratamientos:', error);
+      console.error('❌ Error al cargar tratamientos:', error);
       setTratamientos([]);
       setErrorMsg('Error de red o autenticación. Intenta de nuevo.');
     } finally {

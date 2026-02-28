@@ -40,15 +40,46 @@ export default function CitasTable({ onRefresh }) {
 
   const updateCita = async () => {
     try {
+      console.log('📤 Actualizando cita:', selectedCita.id, editData);
       const response = await apiClient.put(`/citas/${selectedCita.id}`, editData);
+      console.log('✅ Respuesta del servidor:', response.data);
+      
       if (response.data.success) {
         loadCitas();
         onRefresh?.();
         closeModal();
-        alert('Cita actualizada');
+        alert(`✅ Cita actualizada${editData.estado === 'completada' ? ' y registrada en historial médico' : ''}`);
       }
     } catch (error) {
+      console.error('❌ Error al actualizar cita:', error);
       alert('Error al actualizar cita');
+    }
+  };
+
+  const completarCita = async (cita) => {
+    if (!window.confirm(`¿Marcar la cita #${cita.id} de ${cita.usuario_nombre} como completada?`)) {
+      return;
+    }
+
+    try {
+      console.log('📤 Completando cita:', cita.id);
+      const response = await apiClient.put(`/citas/${cita.id}`, {
+        estado: 'completada',
+        costo: cita.costo || 0,
+        notas_admin: cita.notas_admin || `Servicio completado: ${cita.tipo_servicio}`,
+        descripcion: cita.descripcion || `Atención completada el ${new Date().toLocaleDateString('es-ES')}`
+      });
+      
+      console.log('✅ Respuesta del servidor:', response.data);
+      
+      if (response.data.success) {
+        loadCitas();
+        onRefresh?.();
+        alert('✅ Cita marcada como completada y registrada en historial médico');
+      }
+    } catch (error) {
+      console.error('❌ Error al completar cita:', error);
+      alert('Error al completar cita');
     }
   };
 
@@ -108,15 +139,26 @@ export default function CitasTable({ onRefresh }) {
                     <span className={`status-badge ${cita.estado}`}>{cita.estado}</span>
                   </td>
                   <td>
+                    {cita.estado !== 'completada' && cita.estado !== 'cancelada' && (
+                      <button
+                        className="btn-complete"
+                        onClick={() => completarCita(cita)}
+                        title="Marcar como completada"
+                      >
+                        ✓
+                      </button>
+                    )}
                     <button
                       className="btn-edit"
                       onClick={() => openModal(cita)}
+                      title="Editar cita"
                     >
                       ✏️
                     </button>
                     <button
                       className="btn-delete"
                       onClick={() => deleteCita(cita.id)}
+                      title="Eliminar cita"
                     >
                       🗑️
                     </button>

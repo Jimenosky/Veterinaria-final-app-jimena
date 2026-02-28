@@ -32,6 +32,8 @@ router.get('/', authenticateToken, async (req, res) => {
 // Obtener historial médico de una mascota específica
 router.get('/mascota/:mascotaId', authenticateToken, async (req, res) => {
   try {
+    console.log('🔍 Buscando historial médico - Mascota ID:', req.params.mascotaId, 'Usuario ID:', req.user.id);
+    
     // Verificar que la mascota pertenezca al usuario
     const mascota = await runQuery(
       'SELECT * FROM mascotas WHERE id = $1 AND usuario_id = $2',
@@ -39,11 +41,14 @@ router.get('/mascota/:mascotaId', authenticateToken, async (req, res) => {
     );
 
     if (!mascota.rows || mascota.rows.length === 0) {
+      console.log('❌ Mascota no encontrada o no pertenece al usuario');
       return res.status(404).json({
         success: false,
         message: 'Mascota no encontrada',
       });
     }
+
+    console.log('✅ Mascota verificada:', mascota.rows[0].nombre);
 
     const historial = await allQuery(
       `SELECT h.*, m.nombre as mascota_nombre
@@ -54,12 +59,17 @@ router.get('/mascota/:mascotaId', authenticateToken, async (req, res) => {
       [req.params.mascotaId]
     );
 
+    console.log(`✅ ${historial.length} registros de historial encontrados para mascota ${req.params.mascotaId}`);
+    if (historial.length > 0) {
+      console.log('Historial:', historial.map(h => ({ id: h.id, fecha: h.fecha, tipo_servicio: h.tipo_servicio })));
+    }
+
     res.json({
       success: true,
       data: historial,
     });
   } catch (error) {
-    console.error('Error al obtener historial de mascota:', error);
+    console.error('❌ Error al obtener historial de mascota:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener historial',

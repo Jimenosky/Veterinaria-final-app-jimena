@@ -39,31 +39,43 @@ const HistorialMascotaModal: React.FC<Props> = ({ mascotaId, visible, onClose, n
     setErrorMsg('');
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/v1/historial/mascota/${mascotaId}`, {
+      const url = `${apiUrl}/api/v1/historial/mascota/${mascotaId}`;
+      
+      console.log('🔍 Buscando historial médico para mascota:', mascotaId);
+      console.log('🌐 URL:', url);
+      
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       
+      console.log('📡 Status respuesta:', response.status);
+      
       if (!response.ok) {
+        console.error('❌ Error en respuesta:', response.status);
         setHistorial([]);
         setErrorMsg('No se pudo conectar con el servidor. Intenta más tarde.');
         return;
       }
       
       const data = await response.json();
+      console.log('📦 Datos recibidos:', data);
       
       if (data.success) {
+        console.log(`✅ ${data.data?.length || 0} registros de historial encontrados`);
         setHistorial(data.data || []);
       } else if (data.message && (data.message.toLowerCase().includes('token') || data.message.toLowerCase().includes('autoriz'))) {
+        console.log('⚠️ Error de autenticación');
         setHistorial([]);
         setErrorMsg('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
       } else {
+        console.log('⚠️ No hay historial:', data.message);
         setHistorial([]);
         setErrorMsg(data.message || 'No se pudo cargar el historial.');
       }
     } catch (error) {
-      console.error('Error al cargar historial:', error);
+      console.error('❌ Error al cargar historial:', error);
       setHistorial([]);
       setErrorMsg('No se pudo conectar con el servidor. Intenta más tarde.');
     } finally {

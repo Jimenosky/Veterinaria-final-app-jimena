@@ -32,6 +32,8 @@ router.get('/', authenticateToken, async (req, res) => {
 // Obtener tratamientos de una mascota específica
 router.get('/mascota/:mascotaId', authenticateToken, async (req, res) => {
   try {
+    console.log('🔍 Buscando tratamientos - Mascota ID:', req.params.mascotaId, 'Usuario ID:', req.user.id);
+    
     // Verificar que la mascota pertenezca al usuario
     const mascota = await runQuery(
       'SELECT * FROM mascotas WHERE id = $1 AND usuario_id = $2',
@@ -39,11 +41,14 @@ router.get('/mascota/:mascotaId', authenticateToken, async (req, res) => {
     );
 
     if (!mascota.rows || mascota.rows.length === 0) {
+      console.log('❌ Mascota no encontrada o no pertenece al usuario');
       return res.status(404).json({
         success: false,
         message: 'Mascota no encontrada',
       });
     }
+
+    console.log('✅ Mascota verificada:', mascota.rows[0].nombre);
 
     const tratamientos = await allQuery(
       `SELECT t.*, m.nombre as mascota_nombre
@@ -54,12 +59,17 @@ router.get('/mascota/:mascotaId', authenticateToken, async (req, res) => {
       [req.params.mascotaId]
     );
 
+    console.log(`✅ ${tratamientos.length} tratamientos encontrados para mascota ${req.params.mascotaId}`);
+    if (tratamientos.length > 0) {
+      console.log('Tratamientos:', tratamientos.map(t => ({ id: t.id, nombre: t.nombre, estado: t.estado })));
+    }
+
     res.json({
       success: true,
       data: tratamientos,
     });
   } catch (error) {
-    console.error('Error al obtener tratamientos de mascota:', error);
+    console.error('❌ Error al obtener tratamientos de mascota:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener tratamientos',

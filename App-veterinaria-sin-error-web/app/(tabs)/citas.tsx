@@ -344,7 +344,7 @@ export default function CitasScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
             <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: '600', marginRight: 8 }}>📅 Fecha:</Text>
             <Text style={{ color: '#fff', fontSize: 15 }}>
-              {item?.fecha ? new Date(item.fecha + 'T00:00:00').toLocaleDateString('es-ES', { 
+              {item?.fecha ? new Date(item.fecha).toLocaleDateString('es-ES', { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
@@ -359,6 +359,21 @@ export default function CitasScreen() {
             </Text>
           </View>
         </View>
+        
+        {item?.estado === 'pendiente' && (
+          <View style={{ 
+            backgroundColor: '#0ea5e922', 
+            borderRadius: 8, 
+            padding: 10,
+            marginBottom: 8,
+            borderLeftWidth: 3,
+            borderLeftColor: '#0ea5e9'
+          }}>
+            <Text style={{ color: '#7dd3fc', fontSize: 13, fontWeight: '600' }}>
+              ℹ️ Presentarse 10 minutos antes de su cita
+            </Text>
+          </View>
+        )}
         
         <View style={{ 
           backgroundColor: '#7c3aed22', 
@@ -398,7 +413,8 @@ export default function CitasScreen() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
         <Text style={{ color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>¡No tienes citas aún!</Text>
-        <Text style={{ color: '#a1a1aa', fontSize: 16, textAlign: 'center', lineHeight: 22 }}>Cuando agendes una cita, aparecerá aquí para que la gestiones fácilmente.</Text>
+        <Text style={{ color: '#a1a1aa', fontSize: 16, textAlign: 'center', lineHeight: 22, marginBottom: 16 }}>Cuando agendes una cita, aparecerá aquí para que la gestiones fácilmente.</Text>
+        <Text style={{ color: '#7dd3fc', fontSize: 14, textAlign: 'center', fontStyle: 'italic' }}>📌 Recuerda presentarte 10 minutos antes de tu cita</Text>
       </View>
     );
   }

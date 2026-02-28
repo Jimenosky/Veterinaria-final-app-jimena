@@ -3,6 +3,23 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { runQuery, allQuery } = require('../config/database');
 
+// Función para obtener descripción detallada del tratamiento según el servicio
+const obtenerDescripcionTratamiento = (tipoServicio) => {
+  const descripciones = {
+    'Vacunación': 'Aplicación de vacunas esenciales para prevenir enfermedades. Incluye: revisión previa del estado de salud, aplicación de vacuna, observación post-vacunación de 15 minutos, y registro en cartilla. Se recomienda mantener a la mascota en reposo el día de la aplicación.',
+    'Consulta general': 'Revisión completa del estado de salud de su mascota. Incluye: examen físico general, evaluación de peso y temperatura, revisión de ojos, oídos y dientes, auscultación cardiopulmonar, y recomendaciones de cuidado. El veterinario responderá todas sus dudas.',
+    'Desparasitación': 'Tratamiento para eliminar parásitos internos y externos. Incluye: evaluación del tipo de parásito, administración de antiparasitario oral o tópico según corresponda, recomendaciones de higiene, y plan de desparasitación preventiva. Importante ayuno de 2 horas previas.',
+    'Baño y peluquería': 'Servicio completo de higiene y estética. Incluye: baño con productos especializados según tipo de pelaje, secado profesional, corte de uñas, limpieza de oídos, cepillado dental básico, y corte de pelo según preferencia. Tiempo estimado: 2-3 horas.',
+    'Cirugía': 'Procedimiento quirúrgico programado. Incluye: exámenes preoperatorios, anestesia general controlada, cirugía realizada por veterinario especializado, recuperación post-operatoria en clínica, y seguimiento. Se requiere ayuno de 8-12 horas previas. Se entregarán indicaciones detalladas.',
+    'Urgencia': 'Atención inmediata para casos críticos. Nuestro equipo evaluará rápidamente la condición de su mascota y tomará las medidas necesarias. Puede incluir: estabilización, medicación de emergencia, exámenes diagnósticos urgentes, y hospitalización si es necesario.',
+    'Control': 'Seguimiento de tratamiento o condición previa. Incluye: evaluación de evolución, revisión de resultados de exámenes previos, ajuste de medicación si es necesario, y nuevas indicaciones. Traer cartilla médica y recetas anteriores.',
+    'Análisis': 'Exámenes de laboratorio y diagnóstico. Puede incluir: análisis de sangre completo, química sanguínea, examen de orina, copro-parasitario, radiografías o ecografías según indicación. Resultados disponibles en 24-48 horas. Algunos exámenes requieren ayuno.',
+    'Esterilización': 'Procedimiento quirúrgico de castración/esterilización. Incluye: evaluación preoperatoria, anestesia general, cirugía, hospitalización post-operatoria, medicación, y seguimiento. Ayuno obligatorio de 12 horas. Recuperación completa en 7-10 días. Se entregarán cuidados post-operatorios detallados.'
+  };
+
+  return descripciones[tipoServicio] || `Tratamiento programado para: ${tipoServicio}. El veterinario evaluará la condición de su mascota y proporcionará el tratamiento adecuado según sus necesidades específicas.`;
+};
+
 // Endpoint temporal para probar conexión a la base de datos (SIN autenticación)
 router.get('/test-db', async (req, res) => {
   try {
@@ -41,6 +58,8 @@ router.post('/', authenticateToken, async (req, res) => {
     
     // 🎯 CREAR TRATAMIENTO AUTOMÁTICAMENTE basado en el servicio de la cita
     try {
+      const descripcionDetallada = obtenerDescripcionTratamiento(motivo);
+      
       await runQuery(
         `INSERT INTO tratamientos 
          (mascota_id, cita_id, nombre, descripcion, fecha_inicio, estado)
@@ -49,12 +68,12 @@ router.post('/', authenticateToken, async (req, res) => {
           mascotaId,
           citaCreada.id,
           motivo, // Nombre del tratamiento = servicio solicitado
-          `Tratamiento programado: ${motivo}. Fecha de cita: ${fecha}`,
+          descripcionDetallada,
           fecha,
           'activo'
         ]
       );
-      console.log('✅ Tratamiento creado automáticamente');
+      console.log('✅ Tratamiento creado automáticamente:', motivo);
     } catch (tratError) {
       console.log('⚠️ No se pudo crear tratamiento automático:', tratError.message);
       // No fallar si el tratamiento no se crea
@@ -79,7 +98,11 @@ router.post('/', authenticateToken, async (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const citasUsuario = await allQuery(
-      `SELECT c.*, m.nombre as mascota_nombre, m.tipo as mascota_tipo 
+      `SELECT 
+        c.id, c.mascota_id, c.usuario_id, c.fecha, c.hora, 
+        c.tipo_servicio, c.estado, c.descripcion, c.costo, 
+        c.notas_admin, c.fecha_creacion,
+        m.nombre as mascota_nombre, m.tipo as mascota_tipo 
        FROM citas c 
        JOIN mascotas m ON c.mascota_id = m.id 
        WHERE c.usuario_id = $1 
@@ -106,7 +129,11 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const result = await runQuery(
-      `SELECT c.*, m.nombre as mascota_nombre, m.tipo as mascota_tipo 
+      `SELECT 
+        c.id, c.mascota_id, c.usuario_id, c.fecha, c.hora,
+        c.tipo_servicio, c.estado, c.descripcion, c.costo,
+        c.notas_admin, c.fecha_creacion,
+        m.nombre as mascota_nombre, m.tipo as mascota_tipo 
        FROM citas c 
        JOIN mascotas m ON c.mascota_id = m.id 
        WHERE c.id = $1 AND c.usuario_id = $2`,
@@ -180,7 +207,9 @@ router.get('/admin/all', authenticateToken, isAdmin, async (req, res) => {
   try {
     const todasCitas = await allQuery(
       `SELECT 
-        c.*,
+        c.id, c.mascota_id, c.usuario_id, c.fecha, c.hora,
+        c.tipo_servicio, c.estado, c.descripcion, c.costo,
+        c.notas_admin, c.fecha_creacion,
         m.nombre as mascota_nombre,
         m.tipo as mascota_tipo,
         m.raza as mascota_raza,

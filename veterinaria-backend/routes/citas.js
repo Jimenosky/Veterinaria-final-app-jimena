@@ -60,10 +60,18 @@ router.post('/', authenticateToken, async (req, res) => {
     try {
       const descripcionDetallada = obtenerDescripcionTratamiento(motivo);
       
-      await runQuery(
+      console.log('🔍 Creando tratamiento automático con datos:', {
+        mascota_id: mascotaId,
+        cita_id: citaCreada.id,
+        nombre: motivo,
+        estado: 'activo'
+      });
+      
+      const tratamientoResult = await runQuery(
         `INSERT INTO tratamientos 
          (mascota_id, cita_id, nombre, descripcion, fecha_inicio, estado)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
         [
           mascotaId,
           citaCreada.id,
@@ -73,10 +81,12 @@ router.post('/', authenticateToken, async (req, res) => {
           'activo'
         ]
       );
-      console.log('✅ Tratamiento creado automáticamente:', motivo);
+      
+      console.log('✅ Tratamiento creado automáticamente:', tratamientoResult.rows[0]);
     } catch (tratError) {
-      console.log('⚠️ No se pudo crear tratamiento automático:', tratError.message);
-      // No fallar si el tratamiento no se crea
+      console.error('❌❌❌ ERROR AL CREAR TRATAMIENTO AUTOMÁTICO:', tratError);
+      console.error('Stack:', tratError.stack);
+      // No fallar la creación de la cita si el tratamiento falla
     }
     
     res.status(201).json({
@@ -241,6 +251,8 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
   const { estado, costo, notas_admin, descripcion } = req.body;
   const citaId = req.params.id;
 
+  console.log('🔄 Actualizando cita:', citaId, 'Datos:', { estado, costo, notas_admin, descripcion });
+
   try {
     // Obtener la cita actual antes de actualizarla
     const citaActual = await runQuery(
@@ -249,6 +261,7 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     );
 
     if (!citaActual.rows || citaActual.rows.length === 0) {
+      console.log('❌ Cita no encontrada:', citaId);
       return res.status(404).json({
         success: false,
         message: 'Cita no encontrada',
@@ -256,6 +269,7 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     }
 
     const cita = citaActual.rows[0];
+    console.log('📋 Estado actual:', cita.estado, '→ Nuevo estado:', estado);
 
     // Actualizar la cita
     const result = await runQuery(
@@ -269,13 +283,16 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
       [estado, costo, notas_admin, descripcion, citaId]
     );
 
+    console.log('✅ Cita actualizada:', result.rows[0]);
+
     // Si la cita se marca como "completada", crear registro en historial médico
     if (estado === 'completada' && cita.estado !== 'completada') {
       try {
-        await runQuery(
+        const historialResult = await runQuery(
           `INSERT INTO historial_medico 
            (mascota_id, cita_id, fecha, tipo_servicio, descripcion, veterinario, costo)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
           [
             cita.mascota_id,
             citaId,
@@ -286,9 +303,9 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
             costo || 0
           ]
         );
-        console.log('✅ Registro creado en historial médico automáticamente');
+        console.log('✅ Registro creado en historial médico:', historialResult.rows[0]);
       } catch (historialError) {
-        console.error('⚠️ Error al crear historial médico:', historialError.message);
+        console.error('❌ Error al crear historial médico:', historialError);
         // No fallar la actualización de la cita si el historial falla
       }
     }

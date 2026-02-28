@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,9 @@ export default function CitasScreen() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedCita, setSelectedCita] = useState<Cita | null>(null);
+  const [editData, setEditData] = useState({ estado: '', costo: '', notas_admin: '' });
 
   const fetchCitas = async () => {
     try {
@@ -47,6 +50,84 @@ export default function CitasScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchCitas();
+  };
+
+  const handleEditCita = (cita: Cita) => {
+    setSelectedCita(cita);
+    setEditData({ estado: cita.estado, costo: '', notas_admin: '' });
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateCita = async () => {
+    if (!selectedCita) return;
+
+    try {
+      console.log('📤 Actualizando cita:', selectedCita.id);
+      const response = await fetch(`https://api-express-mysql-de-jime.onrender.com/api/v1/citas/${selectedCita.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editData),
+      });
+
+      const data = await response.json();
+      console.log('✅ Respuesta:', data);
+
+      if (data.success) {
+        Alert.alert('✅ Éxito', 'Cita actualizada correctamente');
+        setEditModalVisible(false);
+        fetchCitas();
+      } else {
+        Alert.alert('❌ Error', data.message || 'No se pudo actualizar la cita');
+      }
+    } catch (error) {
+      console.error('❌ Error:', error);
+      Alert.alert('❌ Error', 'Error al actualizar la cita');
+    }
+  };
+
+  const handleCompletarCita = async (cita: Cita) => {
+    Alert.alert(
+      '¿Completar cita?',
+      `¿Marcar la cita de ${cita.usuario_nombre} (${cita.mascota_nombre}) como completada?\n\nEsto creará automáticamente el registro en el historial médico.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Completar',
+          onPress: async () => {
+            try {
+              console.log('📤 Completando cita:', cita.id);
+              const response = await fetch(`https://api-express-mysql-de-jime.onrender.com/api/v1/citas/${cita.id}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  estado: 'completada',
+                  notas_admin: `Servicio completado: ${cita.tipo_servicio}`,
+                }),
+              });
+
+              const data = await response.json();
+              console.log('✅ Respuesta:', data);
+
+              if (data.success) {
+                Alert.alert('✅ Éxito', 'Cita completada y registrada en historial médico');
+                fetchCitas();
+              } else {
+                Alert.alert('❌ Error', data.message || 'No se pudo completar la cita');
+              }
+            } catch (error) {
+              console.error('❌ Error:', error);
+              Alert.alert('❌ Error', 'Error al completar la cita');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getEstadoStyle = (estado: string) => {
@@ -104,14 +185,19 @@ export default function CitasScreen() {
         </View>
 
         <View style={styles.citaActions}>
-          <TouchableOpacity style={styles.actionBtn}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => handleEditCita(item)}>
             <Ionicons name="create-outline" size={20} color="#7c3aed" />
             <Text style={styles.actionBtnText}>Editar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn}>
-            <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
-            <Text style={[styles.actionBtnText, { color: '#10b981' }]}>Completar</Text>
-          </TouchableOpacity>
+          {item.estado !== 'completada' && item.estado !== 'cancelada' && (
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]} 
+              onPress={() => handleCompletarCita(item)}
+            >
+              <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
+              <Text style={[styles.actionBtnText, { color: '#10b981' }]}>Completar</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -143,6 +229,74 @@ export default function CitasScreen() {
           </View>
         }
       />
+
+      {/* Modal de Edición */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Cita #{selectedCita?.id}</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalContent}>
+              <Text style={styles.modalLabel}>Estado</Text>
+              <View style={styles.pickerContainer}>
+                {['pendiente', 'confirmada', 'completada', 'cancelada'].map((estado) => (
+                  <TouchableOpacity
+                    key={estado}
+                    style={[
+                      styles.estadoOption,
+                      editData.estado === estado && styles.estadoOptionSelected,
+                    ]}
+                    onPress={() => setEditData({ ...editData, estado })}
+                  >
+                    <Text
+                      style={[
+                        styles.estadoOptionText,
+                        editData.estado === estado && styles.estadoOptionTextSelected,
+                      ]}
+                    >
+                      {estado.charAt(0).toUpperCase() + estado.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.modalLabel}>Costo (opcional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editData.costo}
+                onChangeText={(text) => setEditData({ ...editData, costo: text })}
+                placeholder="Ej: 50.00"
+                placeholderTextColor="#6b7280"
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.modalLabel}>Notas del Admin (opcional)</Text>
+              <TextInput
+                style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]}
+                value={editData.notas_admin}
+                onChangeText={(text) => setEditData({ ...editData, notas_admin: text })}
+                placeholder="Notas internas sobre la cita"
+                placeholderTextColor="#6b7280"
+                multiline
+              />
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleUpdateCita}>
+                <Text style={styles.saveButtonText}>💾 Guardar Cambios</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -267,5 +421,87 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 16,
     marginTop: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#18181b',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#7c3aed',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  modalContent: {
+    padding: 20,
+  },
+  modalLabel: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  estadoOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#27272a',
+    borderWidth: 1,
+    borderColor: '#3f3f46',
+  },
+  estadoOptionSelected: {
+    backgroundColor: '#7c3aed',
+    borderColor: '#7c3aed',
+  },
+  estadoOptionText: {
+    color: '#9ca3af',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  estadoOptionTextSelected: {
+    color: '#ffffff',
+  },
+  modalInput: {
+    backgroundColor: '#27272a',
+    borderWidth: 1,
+    borderColor: '#3f3f46',
+    borderRadius: 8,
+    padding: 12,
+    color: '#ffffff',
+    fontSize: 14,
+  },
+  saveButton: {
+    backgroundColor: '#7c3aed',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  saveButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

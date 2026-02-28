@@ -43,28 +43,6 @@ export default function AdminPerfilScreen() {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="notifications-outline" size={24} color="#38bdf8" />
-          </View>
-          <View style={styles.menuContent}>
-            <Text style={styles.menuTitle}>Notificaciones</Text>
-            <Text style={styles.menuSubtitle}>Configurar alertas</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="lock-closed-outline" size={24} color="#f59e0b" />
-          </View>
-          <View style={styles.menuContent}>
-            <Text style={styles.menuTitle}>Seguridad</Text>
-            <Text style={styles.menuSubtitle}>Cambiar contraseña</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-        </TouchableOpacity>
       </View>
 
       {/* Información del Sistema */}

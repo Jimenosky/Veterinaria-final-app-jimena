@@ -119,44 +119,6 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* Acciones Rápidas */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={styles.actionIconContainer}>
-              <Ionicons name="person-add" size={24} color="#7c3aed" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Nuevo Usuario</Text>
-              <Text style={styles.actionSubtitle}>Registrar nuevo cliente</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={styles.actionIconContainer}>
-              <Ionicons name="calendar-outline" size={24} color="#38bdf8" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Nueva Cita</Text>
-              <Text style={styles.actionSubtitle}>Agendar consulta</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={styles.actionIconContainer}>
-              <Ionicons name="paw" size={24} color="#06b6d4" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Nueva Mascota</Text>
-              <Text style={styles.actionSubtitle}>Registrar mascota</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-          </TouchableOpacity>
-        </View>
-
         {/* Botón de Cerrar Sesión */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color="#ef4444" />

@@ -39,47 +39,75 @@ export default function CitasTable({ onRefresh }) {
   };
 
   const updateCita = async () => {
+    if (!editData.estado) {
+      alert('⚠️ Debes seleccionar un estado');
+      return;
+    }
+
     try {
-      console.log('📤 Actualizando cita:', selectedCita.id, editData);
+      console.log('📤 Actualizando cita:', selectedCita.id);
+      console.log('📦 Datos originales:', selectedCita);
+      console.log('📦 Datos nuevos:', editData);
+      
       const response = await apiClient.put(`/citas/${selectedCita.id}`, editData);
+      
       console.log('✅ Respuesta del servidor:', response.data);
+      console.log('✅ Status:', response.status);
       
       if (response.data.success) {
-        loadCitas();
+        await loadCitas();
         onRefresh?.();
         closeModal();
-        alert(`✅ Cita actualizada${editData.estado === 'completada' ? ' y registrada en historial médico' : ''}`);
+        
+        let mensaje = '✅ Cita actualizada exitosamente';
+        if (editData.estado === 'completada' && selectedCita.estado !== 'completada') {
+          mensaje += '\n\n• Historial médico actualizado\n• Información disponible en la app del usuario';
+        }
+        alert(mensaje);
+      } else {
+        alert('⚠️ ' + (response.data.message || 'No se pudo actualizar la cita'));
       }
     } catch (error) {
       console.error('❌ Error al actualizar cita:', error);
-      alert('Error al actualizar cita');
+      console.error('❌ Detalles del error:', error.response?.data);
+      alert('❌ Error al actualizar cita: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const completarCita = async (cita) => {
-    if (!window.confirm(`¿Marcar la cita #${cita.id} de ${cita.usuario_nombre} como completada?`)) {
+    if (!window.confirm(`¿Marcar la cita #${cita.id} de ${cita.usuario_nombre} (${cita.mascota_nombre}) como completada?`)) {
       return;
     }
 
     try {
       console.log('📤 Completando cita:', cita.id);
-      const response = await apiClient.put(`/citas/${cita.id}`, {
+      console.log('📦 Datos de la cita:', cita);
+      
+      const dataToSend = {
         estado: 'completada',
         costo: cita.costo || 0,
         notas_admin: cita.notas_admin || `Servicio completado: ${cita.tipo_servicio}`,
         descripcion: cita.descripcion || `Atención completada el ${new Date().toLocaleDateString('es-ES')}`
-      });
+      };
+      
+      console.log('📤 Enviando datos:', dataToSend);
+      
+      const response = await apiClient.put(`/citas/${cita.id}`, dataToSend);
       
       console.log('✅ Respuesta del servidor:', response.data);
+      console.log('✅ Status:', response.status);
       
       if (response.data.success) {
-        loadCitas();
+        await loadCitas();
         onRefresh?.();
-        alert('✅ Cita marcada como completada y registrada en historial médico');
+        alert('✅ Cita marcada como completada.\n\n• Historial médico actualizado\n• Tratamiento registrado\n\nLa información ya está disponible para el usuario en la app móvil.');
+      } else {
+        alert('⚠️ ' + (response.data.message || 'No se pudo completar la cita'));
       }
     } catch (error) {
       console.error('❌ Error al completar cita:', error);
-      alert('Error al completar cita');
+      console.error('❌ Detalles del error:', error.response?.data);
+      alert('❌ Error al completar cita: ' + (error.response?.data?.message || error.message));
     }
   };
 

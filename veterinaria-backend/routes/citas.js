@@ -36,12 +36,34 @@ router.post('/', authenticateToken, async (req, res) => {
       [mascotaId, req.user.id, fecha, hora, motivo, 'pendiente']
     );
     
-    console.log('✅ Cita creada exitosamente:', result.rows[0]);
+    const citaCreada = result.rows[0];
+    console.log('✅ Cita creada exitosamente:', citaCreada);
+    
+    // 🎯 CREAR TRATAMIENTO AUTOMÁTICAMENTE basado en el servicio de la cita
+    try {
+      await runQuery(
+        `INSERT INTO tratamientos 
+         (mascota_id, cita_id, nombre, descripcion, fecha_inicio, estado)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          mascotaId,
+          citaCreada.id,
+          motivo, // Nombre del tratamiento = servicio solicitado
+          `Tratamiento programado: ${motivo}. Fecha de cita: ${fecha}`,
+          fecha,
+          'activo'
+        ]
+      );
+      console.log('✅ Tratamiento creado automáticamente');
+    } catch (tratError) {
+      console.log('⚠️ No se pudo crear tratamiento automático:', tratError.message);
+      // No fallar si el tratamiento no se crea
+    }
     
     res.status(201).json({
       success: true,
       message: 'Cita creada exitosamente.',
-      data: result.rows[0],
+      data: citaCreada,
     });
   } catch (error) {
     console.error('❌ Error al crear cita:', error);
@@ -276,7 +298,10 @@ router.get('/disponibilidad/:fecha', authenticateToken, async (req, res) => {
         const horario = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
         
         // Verificar si este horario ya está ocupado
-        const ocupado = citasDelDia.some(cita => cita.hora === horario + ':00' || cita.hora === horario);
+        const ocupado = citasDelDia.some(cita => {
+          const horaDB = cita.hora.substring(0, 5); // Obtener HH:MM de la hora en la BD
+          return horaDB === horario;
+        });
         
         horariosDisponibles.push({
           hora: horario,
@@ -295,6 +320,7 @@ router.get('/disponibilidad/:fecha', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al obtener disponibilidad',
+      error: error.message
     });
   }
 });

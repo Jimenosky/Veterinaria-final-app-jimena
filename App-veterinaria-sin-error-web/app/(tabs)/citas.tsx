@@ -178,29 +178,37 @@ export default function CitasScreen() {
           Authorization: `Bearer ${token}`,
         },
       });
+      
+      // Verificar si la respuesta es JSON válida
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.log('⚠️ Respuesta no es JSON, usando horarios por defecto');
+        generarHorariosDefecto();
+        return;
+      }
+
       const data = await response.json();
       
       if (data.success && data.horarios) {
         setHorariosDisponibles(data.horarios);
+        console.log('✅ Horarios cargados:', data.horarios.length);
       } else {
-        // Si falla, generar horarios por defecto
-        const horarios = [];
-        for (let h = 8; h <= 20; h++) {
-          horarios.push({ hora: `${h.toString().padStart(2, '0')}:00`, disponible: true });
-          if (h < 20) horarios.push({ hora: `${h.toString().padStart(2, '0')}:30`, disponible: true });
-        }
-        setHorariosDisponibles(horarios);
+        console.log('⚠️ Respuesta sin horarios, usando por defecto');
+        generarHorariosDefecto();
       }
     } catch (error) {
-      console.error('Error al obtener horarios:', error);
-      // Generar horarios por defecto en caso de error
-      const horarios = [];
-      for (let h = 8; h <= 20; h++) {
-        horarios.push({ hora: `${h.toString().padStart(2, '0')}:00`, disponible: true });
-        if (h < 20) horarios.push({ hora: `${h.toString().padStart(2, '0')}:30`, disponible: true });
-      }
-      setHorariosDisponibles(horarios);
+      console.log('⚠️ Error al obtener horarios, usando por defecto:', error.message);
+      generarHorariosDefecto();
     }
+  };
+
+  const generarHorariosDefecto = () => {
+    const horarios = [];
+    for (let h = 8; h <= 20; h++) {
+      horarios.push({ hora: `${h.toString().padStart(2, '0')}:00`, disponible: true });
+      if (h < 20) horarios.push({ hora: `${h.toString().padStart(2, '0')}:30`, disponible: true });
+    }
+    setHorariosDisponibles(horarios);
   };
 
   const crearCita = async () => {
